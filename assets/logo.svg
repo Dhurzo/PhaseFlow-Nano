@@ -1,0 +1,26 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo redondeado -->
+  <rect width="120" height="120" rx="30" fill="#1E1E2E"/>
+  
+  <!-- Nodo 1 (Explorer) -->
+  <circle cx="30" cy="35" r="10" fill="#10B981"/>
+  
+  <!-- Línea de flujo 1 -->
+  <path d="M40 35 C 50 35, 50 60, 60 60" stroke="#6366F1" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Nodo 2 (Planner) -->
+  <circle cx="60" cy="60" r="12" fill="#6366F1"/>
+  
+  <!-- Línea de flujo 2 -->
+  <path d="M72 60 C 82 60, 82 85, 92 85" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Nodo 3 (Builder) -->
+  <circle cx="92" cy="85" r="10" fill="#F59E0B"/>
+  
+  <!-- Anillo de Orchestrator -->
+  <circle cx="60" cy="60" r="35" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="5 4" opacity="0.5"/>
+  
+  <!-- Puntos decorativos (Nano) -->
+  <circle cx="30" cy="85" r="3" fill="#EC4899"/>
+  <circle cx="92" cy="35" r="3" fill="#EF4444"/>
+</svg>

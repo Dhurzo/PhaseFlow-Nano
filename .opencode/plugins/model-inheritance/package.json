@@ -1,0 +1,9 @@
+{
+  "name": "model-inheritance",
+  "version": "1.0.0",
+  "description": "Minimal plugin that makes sub-agents inherit the parent session's model",
+  "main": "index.js",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {}
+}

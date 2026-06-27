@@ -1,0 +1,14 @@
+{
+  "name": "phaseflow-nano",
+  "version": "1.0.0",
+  "description": "Multi-agent system for OpenCode optimized for local models. Core is pure markdown agents with one optional model-inheritance plugin. No TypeScript build step required.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["opencode", "multi-agent", "local-models", "phaseflow"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "model-inheritance": "file:.opencode/plugins/model-inheritance"
+  }
+}
