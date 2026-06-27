@@ -1,8 +1,9 @@
 ---
 description: >-
-  Fully automated pipeline orchestrator. Reads plan.md, invokes
-  phaseflow-builder and phaseflow-reviewer in a loop with fresh context
-  each time, and stops when all phases are REVIEWED, BLOCKED, or
+  Fully automated pipeline orchestrator. Reads .phase files and
+  plan.md for metadata, invokes phaseflow-builder and
+  phaseflow-reviewer in a loop with fresh context each time,
+  and stops when all phases are REVIEWED, BLOCKED, or
   ERROR. Use when you want to "run everything", "execute the plan
   automatically", "/phaseflow-orchestrate"
   or "build all phases".
@@ -97,7 +98,7 @@ Based on the phase's state and Type column:
 
 **Global iteration tracking (`.loop-count` file):** Before invoking ANY agent for a phase (any state), read `outputs/phase-X/.loop-count`. File content = number of times this phase has been visited so far (0 = none, first visit). If N >= 8, **skip the dispatch** and mark the phase as `ERROR` with Result: `"⚠️ Loop detected — visited 8 times without terminal state. Manual intervention required."` Otherwise, proceed with dispatch. **After** the sub-agent returns (Step 4), increment the counter: read N → write N+1. This prevents counter inflation if the orchestrator crashes between the check and the actual dispatch. The counter covers ALL dispatches (build, review, fix) and is cleaned up when the phase reaches a terminal state (Step 4.5).
 
-**REQUIRES_FIX retry tracking (persisted in `.retry-count` file):** Before invoking the builder for a REQUIRES_FIX phase, read `outputs/phase-X/.retry-count`. File content = number of completed retries (0 = none). If N >= 3, skip and mark ERROR. Proceed with dispatch. **After** the sub-agent returns (Step 4), increment the counter: read N → write N+1. This prevents counter inflation if the orchestrator crashes between the check and the actual dispatch. The file survives builder/reviewer edits to plan.md. See [REQUIRES_FIX Auto-Retry](#requires_fix-auto-retry) below.
+**REQUIRES_FIX retry tracking (persisted in `.retry-count` file):** Before invoking the builder for a REQUIRES_FIX phase, read `outputs/phase-X/.retry-count`. File content = number of completed retries (0 = none). If N >= 3, skip and mark ERROR. Proceed with dispatch. **After** the sub-agent returns (Step 4), increment the counter: read N → write N+1. This prevents counter inflation if the orchestrator crashes between the check and the actual dispatch. The file lives in `outputs/phase-X/` and is independent of plan.md (which is now a derived view). See [REQUIRES_FIX Auto-Retry](#requires_fix-auto-retry) below.
 
 Use the `inherit-task` tool to invoke the agent as a sub-agent. **`inherit-task` is preferred** (it preserves this session's model). If `inherit-task` is not available for any reason, fall back to the built-in `task` tool.
 

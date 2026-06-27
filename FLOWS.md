@@ -107,12 +107,13 @@ User: "I want to add JWT authentication to my project"
 ```
 User: "/phaseflow-orchestrate"
 
-→ Orchestrator reads plan.md, finds first PENDING phase
+→ Orchestrator reads .phase files, finds next pending/in_progress/completed phase
 → Invokes phaseflow-builder via inherit-task (inherits model)
-→ Builder completes phase → updates plan.md → COMPLETED
+→ Builder completes phase → writes .phase → completed
 → Orchestrator invokes phaseflow-reviewer via inherit-task
-→ Reviewer audits → updates plan.md → REVIEWED (or REQUIRES_FIX)
+→ Reviewer audits → writes .phase → reviewed (or requires_fix)
 → Repeat until all phases are terminal
+→ (plan.md table is a derived view — run `phaseflow-doctor --fix` to regenerate if needed)
 ```
 
 > 💡 Use **`/phaseflow-status`** at any point to check progress:
@@ -138,24 +139,25 @@ User: "/phaseflow-orchestrate --gsd"
 
 ## State Machine
 
-### Two sources of truth
+### Single source of truth
 
-State is stored in **two sources**:
+State is stored in **one canonical place**:
 
-1. **`outputs/phase-X/.phase`** — programmatic state (lowercase, one word, no newline). This is the source of truth for agent logic.
-2. **`plan.md` table** — human-readable state (uppercase). Must match `.phase`.
+1. **`outputs/phase-X/.phase`** — programmatic state (lowercase, one word, no newline). This is the **only** source of truth. Every agent reads from it and writes to it.
+
+2. **`plan.md` table** — **derived view**. It is regenerated from `.phase` files by `phaseflow-doctor --fix`. Agents do NOT write to plan.md's state table — they only write `.phase`.
 
 ### States
 
-| `.phase` | plan.md | Meaning | Terminal? | Who sets it |
-|----------|---------|---------|:---------:|-------------|
-| `pending` | `PENDING` | Phase created, never executed | No | `phaseflow-planner` |
-| `in_progress` | `IN_PROGRESS` | Builder executing, or paused (check remaining-tasks.md/CHECKPOINT.md) | No | `phaseflow-builder` |
-| `completed` | `COMPLETED` | Builder finished successfully, awaiting review | No | `phaseflow-builder` |
-| `reviewed` | `REVIEWED` | Passed review ✅ | **Yes** | `phaseflow-reviewer` |
-| `requires_fix` | `REQUIRES_FIX` | Reviewer found critical bugs — needs fix cycle | No | `phaseflow-reviewer` |
-| `blocked` | `BLOCKED` | Missing dependencies or information | **Yes** | `phaseflow-builder` |
-| `error` | `ERROR` | Unrecoverable failure | **Yes** | `phaseflow-builder` / `phaseflow-orchestrator` |
+| `.phase` content | Meaning | Terminal? | Who sets it |
+|------------------|---------|:---------:|-------------|
+| `pending` | Phase created, never executed | No | `phaseflow-planner` |
+| `in_progress` | Builder executing, or paused (check remaining-tasks.md/CHECKPOINT.md) | No | `phaseflow-builder` |
+| `completed` | Builder finished successfully, awaiting review | No | `phaseflow-builder` |
+| `reviewed` | Passed review ✅ | **Yes** | `phaseflow-reviewer` |
+| `requires_fix` | Reviewer found critical bugs — needs fix cycle | No | `phaseflow-reviewer` |
+| `blocked` | Missing dependencies or information | **Yes** | `phaseflow-builder` |
+| `error` | Unrecoverable failure | **Yes** | `phaseflow-builder` / `phaseflow-orchestrator` |
 
 > **Terminal states** (`reviewed`, `blocked`, `error`) stop all builder/reviewer processing for that phase. The orchestrator only touches them to clean up counter files (Step 4.5). No builder or reviewer will ever execute them again.
 > **PAUSED has been removed.** The `in_progress` state + `remaining-tasks.md` file covers both running and paused — no separate PAUSED state needed.
@@ -195,12 +197,13 @@ State is stored in **two sources**:
 
 ### What each agent does with states
 
-| Agent | Reads from `.phase` | Writes to `.phase` |
-|-------|---------------------|-------------------|
-| `phaseflow-planner` | — | `pending` |
-| `phaseflow-builder` | `pending`, `in_progress`, `requires_fix` | `in_progress` → `completed` / `blocked` / `error` |
-| `phaseflow-reviewer` | `completed` | `reviewed` or `requires_fix` |
-| `phaseflow-orchestrator` | All states (loop) | `error` (when retries exhausted) |
+| Agent | Reads from `.phase` | Writes to `.phase` | Writes to `plan.md`? |
+|-------|---------------------|-------------------|---------------------|
+| `phaseflow-planner` | — | `pending` | ❌ (only creates initial structure) |
+| `phaseflow-builder` | `pending`, `in_progress`, `requires_fix` | `in_progress` → `completed` / `blocked` / `error` | ❌ (plan.md is a derived view) |
+| `phaseflow-reviewer` | `completed` | `reviewed` or `requires_fix` | ❌ (plan.md is a derived view) |
+| `phaseflow-orchestrator` | All states (loop) | `error` (when retries exhausted) | ❌ (delegates to sub-agents) |
+| `phaseflow-doctor --fix` | All states | — | ✅ **only** — regenerates table from .phase |
 
 ### Invocation priority
 

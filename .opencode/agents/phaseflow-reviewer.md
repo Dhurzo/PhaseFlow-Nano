@@ -156,28 +156,17 @@ Write **`outputs/phase-X/REVIEW.md`** with this structure:
 🔴 **REQUIRES CORRECTIONS** — Fix the 2 critical issues before the next phase.
 ```
 
-### Step 8 — Update .phase and plan.md
+### Step 8 — Write .phase (Single Source of Truth)
 
-Update BOTH state sources based on the verdict:
+Write the canonical state to `outputs/phase-X/.phase` based on the verdict:
 
-1. Write `outputs/phase-X/.phase`:
-   - `reviewed` for APPROVED or APPROVED WITH OBSERVATIONS
-   - `requires_fix` for REQUIRES CORRECTIONS
+| Verdict | `.phase` content |
+|---------|-----------------|
+| ✅ APPROVED | `reviewed` |
+| ⚠️ APPROVED WITH OBSERVATIONS | `reviewed` |
+| 🔴 REQUIRES CORRECTIONS | `requires_fix` |
 
-2. Update the phase table in `plan.md` with the same state:
-
-| Verdict | New State |
-|---------|-----------|
-| ✅ APPROVED | `REVIEWED` |
-| ⚠️ APPROVED WITH OBSERVATIONS | `REVIEWED` |
-| 🔴 REQUIRES CORRECTIONS | `REQUIRES_FIX` |
-
-Example:
-
-```md
-| 2 | API | Backend/Logic | REVIEWED | phases/phase-2.md | ✅ Reviewed. See REVIEW.md |
-| 3 | UI | Visual/Frontend | REQUIRES_FIX | phases/phase-3.md | 🔴 2 critical: SQL injection, hardcoded key |
-```
+> ⚠️ You write ONLY to `.phase`. The `plan.md` table is a **derived view** — it is regenerated from `.phase` files by `phaseflow-doctor --fix`. Do NOT edit plan.md's phase table.
 
 ---
 

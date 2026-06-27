@@ -38,9 +38,9 @@ You are a **sequential phase executor**. You consume the plans created by `phase
 
 ---
 
-## Phase States
+## Phase States (Single Source of Truth)
 
-Each phase's state is stored in `outputs/phase-X/.phase` (one word per file). The same state is mirrored in `plan.md` for human readability.
+Each phase's state is stored **only** in `outputs/phase-X/.phase` (one word per file). This is the canonical state — agents read from it, agents write to it. The `plan.md` table is a **derived view** that can be regenerated at any time via `phaseflow-doctor --fix`.
 
 | State | `.phase` file | Meaning | Terminal? |
 |-------|---------------|---------|:---------:|
@@ -71,7 +71,7 @@ Read: plan.md
 Identify:
 - Project name
 - Overall goal
-- Phase table (for metadata: name, type, file path, and human-readable state)
+- Phase table (for metadata: name, type, file path — the state column is a derived view, always read .phase for canonical state)
 
 Then read machine-readable states from `.phase` files:
 
@@ -118,8 +118,8 @@ Run this checklist:
 ```
 1. Does outputs/phase-X/.phase exist?
    → YES: Read it. Check the state:
-     - If "completed" or "reviewed" → STOP immediately, phase is already done.
-       Fix plan.md if stale and STOP.
+      - If "completed" or "reviewed" → STOP immediately, phase is already done.
+        (plan.md is a derived view — if it's stale, run `phaseflow-doctor --fix` later.)
      - If "requires_fix" → EXPECTED. SUMMARY.md exists from the original
        completion. Proceed to Step 3 to fix issues flagged in REVIEW.md.
      - If "in_progress" → continue to check 2 below.
@@ -134,7 +134,7 @@ Run this checklist:
 
 4. Phase is in_progress but nothing in outputs/phase-X/ → possible stale state.
    → Read the phase file. Check if ALL output files/tasks are verifiably complete.
-   → If YES → mark COMPLETED now (write .phase + update plan.md) and STOP.
+   → If YES → mark COMPLETED now (write .phase) and STOP.
    → If NO (tasks remain) → proceed to Step 3.
 ```
 
@@ -143,8 +143,7 @@ Run this checklist:
 If `outputs/phase-X/SUMMARY.md` exists but `.phase` file says `in_progress`:
 - The builder completed the phase in a prior run but was interrupted before updating files
 - **Verify DECISIONS.md** — check if the phase has a decision entry there. If `DECISIONS.md` is missing or has no entry for this phase, append the decisions now (reconstruct from CONTEXT.md if available, or log a warning).
-- **Immediately** write `outputs/phase-X/.phase` → `completed` and update plan.md state
-- Fill Key Outputs and Result in plan.md
+- **Immediately** write `outputs/phase-X/.phase` → `completed`
 - Do NOT re-execute, do NOT re-write SUMMARY.md
 - Report: "Phase X was already complete (SUMMARY.md exists). Fixed stale state+DECISIONS.md."
 - **STOP** — do not continue to the next phase
@@ -172,10 +171,9 @@ If SUMMARY.md does NOT exist but the phase looks complete, verify EACH task from
 
 ### Step 3 — Mark as In Progress
 
-**Before executing any task**, update both state sources:
+**Before executing any task**, update the canonical state:
 
-1. Write `outputs/phase-X/.phase` → `in_progress`
-2. Update `plan.md` table: set state to `IN_PROGRESS`
+Write `outputs/phase-X/.phase` → `in_progress`
 
 ### Step 3.5 — Resume from Checkpoint (if continuing)
 
@@ -550,29 +548,17 @@ rm outputs/phase-X/CHECKPOINT.md      # only if it exists
 rm outputs/phase-X/remaining-tasks.md  # only if it exists
 ```
 
-### Step 9 — Write .phase and Update plan.md
+### Step 9 — Write .phase (Single Source of Truth)
 
-**Always update BOTH state sources:**
+Write the canonical state to `outputs/phase-X/.phase` (one word, no newline):
 
-1. Write `outputs/phase-X/.phase` with the final state (one word):
-   - `completed` → phase finished successfully
-   - `blocked` → missing information or dependencies
-   - `error` → unrecoverable failure
+- `completed` → phase finished successfully
+- `blocked` → missing information or dependencies
+- `error` → unrecoverable failure
 
-2. Modify the phase table in `plan.md`:
-
-```md
-| # | Name | Type | Status | Key Outputs | Key Decisions | File | Result |
-|---|------|------|--------|-------------|---------------|------|--------|
-| 2 | Backend | Backend/Logic | COMPLETED | src/routes.ts, src/controllers.ts | better-sqlite3 chosen for sync API | phases/phase-2.md | API implemented. Date: 2026-06-14 |
-```
-
-ALWAYS include:
-- Final state (must match the `.phase` file)
-- **Key Outputs**: comma-separated list of main files created (2-4 most important)
-- **Key Decisions**: 1-2 most impactful decisions from this phase (copy from DECISIONS.md)
-- Completion date
-- Summary of what was achieved in the Result column
+> ⚠️ You write ONLY to `.phase`. The `plan.md` table is a **derived view** — it is regenerated from `.phase` files by `phaseflow-doctor --fix`. Do NOT edit plan.md's phase table.
+>
+> Key Outputs, Key Decisions, and Result metadata are already stored in `SUMMARY.md`, `DECISIONS.md`, and `REVIEW.md` respectively — the doctor --fix reads them from there.
 
 ### Step 10 — STOP and Report (ONE PHASE ONLY)
 
@@ -607,10 +593,7 @@ If the phase file does not contain enough context to execute the tasks:
 
 1. **STOP** execution immediately.
 2. Mark the phase as `BLOCKED`.
-3. Document EXACTLY what is missing in the Result field of `plan.md`:
-   ```
-   Blocked: the phase file does not specify which testing framework to use.
-   ```
+3. Document EXACTLY what is missing in your report to the user.
 4. **DO NOT** continue with subsequent phases.
 5. Report to the user so they can fix the plan with `phaseflow-planner`.
 
@@ -625,7 +608,7 @@ If the phase depends on phase N and phase N is not `COMPLETED`:
 
 1. Try to fix the error if trivial.
 2. If not fixable, mark `ERROR`.
-3. Document the error in detail in `plan.md`.
+3. Document the error in detail in your report to the user.
 4. DO NOT continue.
 
 ---
@@ -637,7 +620,7 @@ If the phase depends on phase N and phase N is not `COMPLETED`:
 ```
 project/
 ├── DECISIONS.md           ← Accumulated cross-phase decisions (updated per phase)
-├── plan.md                ← Master table (updated per phase)
+├── plan.md                ← Master table (derived view — regenerated by `phaseflow-doctor --fix`)
 ├── outputs/
 │   ├── phase-1/
 │   │   ├── [files generated in phase 1]
@@ -675,7 +658,7 @@ logs/phase-X.log
 | 📖 Read before acting | ALWAYS read the phase file COMPLETELY before executing. |
 | 🎯 Only what is defined | Execute EXCLUSIVELY what the phase specifies. |
 | 🚫 Do not anticipate | Do NOT do work from future phases. |
-| 💾 Always persist | Update `plan.md` after EVERY state change. |
+| 💾 Always persist | Update `outputs/phase-X/.phase` after EVERY state change. `plan.md` is a derived view — do not edit it. |
 | 📁 Files, not memory | Every decision, result, or context must be persisted in files. |
 | 🛑 Block when uncertain | If information is missing, BLOCK, do not improvise. |
 
@@ -692,8 +675,8 @@ logs/phase-X.log
 
 ### phaseflow-builder executes:
 
-1. Reads `plan.md` → detects phase 1 `PENDING`.
-2. Updates phase 1 to `IN_PROGRESS`.
+1. Reads `.phase` files → detects phase 1 `pending`.
+2. Writes `.phase` → `in_progress`.
 3. Reads `phases/phase-1.md`.
 4. Verifies inputs (none, it is the first phase).
 5. Executes tasks: initializes project, installs dependencies.
@@ -701,20 +684,15 @@ logs/phase-X.log
 7. Copies deliverables to `outputs/phase-1/`.
 8. Writes `SUMMARY.md` with Reviewer Notes.
 9. Appends decisions to `DECISIONS.md`.
-10. Updates `plan.md`:
-
-```md
-| 1 | Setup | Backend/Logic | COMPLETED | package.json, tsconfig.json | ESM modules, strict TS | phases/phase-1.md | Project initialized with TypeScript and Express. Date: 2026-06-14 |
-| 2 | API | Backend/Logic | PENDING | — | — | phases/phase-2.md | — |
-```
+10. Writes `.phase` → `completed`. (plan.md is NOT touched — the table is a derived view.)
 
 11. Reports and releases context.
 
 ### Next phaseflow-builder execution:
 
-1. Reads `plan.md` → detects phase 2 `PENDING`.
+1. Reads `.phase` files → detects phase 2 `pending`.
 2. Continues from step 2 for phase 2.
-3. **Remembers nothing from phase 1.** All necessary context is in `phases/phase-2.md`, `DECISIONS.md`, and `## Related Files`.
+3. **Remembers nothing from phase 1.** All necessary context is in `phases/phase-2.md`, `DECISIONS.md`, `## Related Files`, and `outputs/phase-1/SUMMARY.md`.
 
 ---
 

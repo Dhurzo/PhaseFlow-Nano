@@ -398,7 +398,7 @@ mkdir -p outputs/phase-X
 echo -n "pending" > outputs/phase-X/.phase
 ```
 
-The `.phase` file contains exactly one word (the lowercase state name) with no trailing newline. This is the **source of truth** for programmatic state checks. The `plan.md` table is for humans and retains the uppercase, human-readable state.
+The `.phase` file contains exactly one word (the lowercase state name) with no trailing newline. This is the **single source of truth** for state. The `plan.md` table is a **derived view** — it is regenerated from `.phase` files by `phaseflow-doctor --fix`.
 
 **State abbreviations:**
 
