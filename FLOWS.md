@@ -110,10 +110,11 @@ User: "/phaseflow-orchestrate"
 → Orchestrator reads .phase files, finds next pending/in_progress/completed phase
 → Invokes phaseflow-builder via inherit-task (inherits model)
 → Builder completes phase → writes .phase → completed
+→ Orchestrator invokes phaseflow-doctor --fix to sync plan.md
 → Orchestrator invokes phaseflow-reviewer via inherit-task
 → Reviewer audits → writes .phase → reviewed (or requires_fix)
+→ Orchestrator invokes phaseflow-doctor --fix to sync plan.md again
 → Repeat until all phases are terminal
-→ (plan.md table is a derived view — run `phaseflow-doctor --fix` to regenerate if needed)
 ```
 
 > 💡 Use **`/phaseflow-status`** at any point to check progress:

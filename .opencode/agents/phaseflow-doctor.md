@@ -195,11 +195,20 @@ NAME=$(head -1 "phases/phase-$ID.md" 2>/dev/null | sed 's/^# Phase [0-9]*: //')
 TYPE=$(grep '\*\*Type:\*\*' "phases/phase-$ID.md" 2>/dev/null | sed 's/\*\*Type:\*\* //' | xargs)
 
 # 4. Extract Key Outputs from SUMMARY.md
-#    Look for bullet points with Created/Modified file paths
-OUTPUTS=$(grep -E '^- (Created|Modified) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed "s/^- Created \`/\`/;s/^- Modified \`/\`/;s/\`.*//" | tr '\n' ', ' | sed 's/, $//')
+#    Robust parser: accepts Created/Creado/Added/Modified/Modificado variants
+OUTPUTS=$(grep -iE '^- (Created|Creado|Modified|Modificado|Added|Adds?) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed -E 's/^- [A-Za-z]+ `//;s/\`.*//' | tr '\n' ', ' | sed 's/, $//')
+# Fallback: read from current plan.md table (saved in Step F4)
+if [ -z "$OUTPUTS" ] && [ -f /tmp/pf-fallback.txt ]; then
+  OUTPUTS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f2 | xargs)
+fi
 
 # 5. Extract Key Decisions from SUMMARY.md
-DECISIONS=$(grep '^- Key decision:' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed 's/^- Key decision: //' | tr '\n' '; ' | sed 's/; $//')
+#    Accepts: "Key decision:" / "Decisión clave:" / "Decision:"
+DECISIONS=$(grep -iE '^- (Key decision|Decisión clave|Decision):' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed -E 's/^- (Key decision|Decisión clave|Decision): //' | tr '\n' '; ' | sed 's/; $//')
+# Fallback: read from current plan.md table
+if [ -z "$DECISIONS" ] && [ -f /tmp/pf-fallback.txt ]; then
+  DECISIONS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f3 | xargs)
+fi
 
 # 6. Extract Result from REVIEW.md (verdict)
 RESULT=$(grep -A1 '## Final Verdict' "outputs/phase-$ID/REVIEW.md" 2>/dev/null | tail -1 | sed 's/\*\*//g' | xargs)
@@ -207,7 +216,11 @@ RESULT=$(grep -A1 '## Final Verdict' "outputs/phase-$ID/REVIEW.md" 2>/dev/null |
 if [ -z "$RESULT" ]; then
   RESULT=$(grep -A2 '## TL;DR' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | tail -1 | xargs)
 fi
-# Fallback: just show the state
+# Fallback: read from current plan.md table (saved in Step F4)
+if [ -z "$RESULT" ] && [ -f /tmp/pf-fallback.txt ]; then
+  RESULT=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f4 | xargs)
+fi
+# Last resort
 if [ -z "$RESULT" ]; then
   RESULT="—"
 fi
@@ -215,11 +228,29 @@ fi
 
 #### Step F4 — Handle Missing Data
 
-If `SUMMARY.md` does not exist for a `completed` or `reviewed` phase, set outputs/decisions to `—` and log a warning. Do NOT block the regeneration.
+**Before regenerating, save current plan.md values as fallback.** Parse the existing phase table to extract Key Outputs, Key Decisions, and Result for each phase. These will be used if SUMMARY.md/REVIEW.md don't exist:
 
-If `phases/phase-X.md` does not exist, skip the phase and log a critical warning.
+```bash
+# Extract current values from plan.md for fallback
+# Output: phase-1|outputs|decisions|result format
+grep '^|' plan.md | grep -v '^| *#' | grep -v '|-' | while IFS='|' read -r _ num name type state outputs decisions file result _; do
+  num=$(echo "$num" | xargs)
+  outputs=$(echo "$outputs" | xargs)
+  decisions=$(echo "$decisions" | xargs)
+  result=$(echo "$result" | xargs)
+  echo "phase-$num|$outputs|$decisions|$result"
+done > /tmp/pf-fallback.txt
+```
 
-If `.phase` file does not exist, the phase has not been initialized — default to `pending` and log a warning.
+Then for each phase during table generation:
+
+1. If `outputs/phase-X/.phase` does not exist → default to `pending`, log a warning.
+2. If `phases/phase-X.md` does not exist → skip the phase, log a critical warning.
+3. If `SUMMARY.md` does not exist for a `completed` or `reviewed` phase, or the parser found no Outputs/Decisions:
+   - Try to read fallback values from `/tmp/pf-fallback.txt` (from current plan.md)
+   - If fallback exists → use those values  
+   - If no fallback → set to `—`, log a warning
+4. If `REVIEW.md` does not exist for a reviewed/requires_fix phase → try fallback, then TL;DR from SUMMARY.md, then `—`.
 
 #### Step F5 — Generate the New Table
 
@@ -241,10 +272,22 @@ for ID in $(ls phases/phase-*.md 2>/dev/null | sort -V | sed 's/[^0-9]//g'); do
   STATE=$(cat "outputs/phase-$ID/.phase" 2>/dev/null || echo "pending")
   NAME=$(head -1 "phases/phase-$ID.md" 2>/dev/null | sed 's/^# Phase [0-9]*: //')
   TYPE=$(grep '\*\*Type:\*\*' "phases/phase-$ID.md" 2>/dev/null | sed 's/\*\*Type:\*\* //' | xargs)
-  OUTPUTS=$(grep -E '^- (Created|Modified) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed "s/^- Created \`//;s/^- Modified \`//;s/\`.*//" | tr '\n' ', ' | sed 's/, $//')
-  DECISIONS=$(grep '^- Key decision:' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed 's/^- Key decision: //' | tr '\n' '; ' | sed 's/; $//')
+  OUTPUTS=$(grep -iE '^- (Created|Creado|Modified|Modificado|Added|Adds?) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed -E 's/^- [A-Za-z]+ `//;s/\`.*//' | tr '\n' ', ' | sed 's/, $//')
+  # Fallback outputs: read from current plan.md table
+  if [ -z "$OUTPUTS" ] && [ -f /tmp/pf-fallback.txt ]; then
+    OUTPUTS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f2 | xargs)
+  fi
+  DECISIONS=$(grep -iE '^- (Key decision|Decisión clave|Decision):' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed -E 's/^- (Key decision|Decisión clave|Decision): //' | tr '\n' '; ' | sed 's/; $//')
+  # Fallback decisions: read from current plan.md table
+  if [ -z "$DECISIONS" ] && [ -f /tmp/pf-fallback.txt ]; then
+    DECISIONS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f3 | xargs)
+  fi
   RESULT=$(grep -A1 '## Final Verdict' "outputs/phase-$ID/REVIEW.md" 2>/dev/null | tail -1 | sed 's/\*\*//g' | xargs)
   if [ -z "$RESULT" ]; then RESULT=$(grep -A2 '## TL;DR' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | tail -1 | xargs); fi
+  # Fallback result: read from current plan.md table
+  if [ -z "$RESULT" ] && [ -f /tmp/pf-fallback.txt ]; then
+    RESULT=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f4 | xargs)
+  fi
   if [ -z "$RESULT" ]; then RESULT="—"; fi
   
   STATE_UPPER=$(echo "$STATE" | tr '[:lower:]' '[:upper:]')

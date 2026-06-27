@@ -144,6 +144,20 @@ inherit-task(
 
 Wait for the sub-agent to complete (the `inherit-task` tool returns when done).
 
+### Step 4.25 — Sync plan.md (derived view)
+
+After the sub-agent completes, regenerate `plan.md` from canonical `.phase` files so the table always reflects the latest state:
+
+```
+inherit-task(
+  subagent_type: "phaseflow-doctor",
+  description: "Sync plan.md",
+  prompt: "Run phaseflow-doctor --fix to regenerate plan.md from canonical .phase files."
+)
+```
+
+This keeps the derived view in sync without requiring agents to dual-write. The doctor reads `.phase`, `SUMMARY.md`, and `REVIEW.md` and rebuilds the table. If the doctor is unavailable or fails (non-critical — plan.md is just a view), log a warning and continue.
+
 ### Step 4.5 — Cleanup Terminal Phase Counters
 
 **After** each sub-agent returns, re-read `.phase` files. For every phase that is now in a **terminal state** (`.phase` contains `reviewed`, `error`, or `blocked`), delete its counter files:
