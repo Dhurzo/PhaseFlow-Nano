@@ -81,14 +81,38 @@ Obviously the best result — this is a frontier model; this test is just to com
 
 ---
 
+## Qwen 3 30B-A3B (Local)
+
+| Attribute | Value |
+|-----------|-------|
+| **Model** | `qwen/qwen3-30b-a3b` |
+| **Plan** | ✅ Generated |
+| **Result** | ✅ All phases completed |
+| **Screenshot** | ![](assets/pocs/Qwen30BA3B/1.png) |
+
+---
+
+## Gemma 4 26B A4B (Local)
+
+| Attribute | Value |
+|-----------|-------|
+| **Model** | `google/gemma-4-26b-a4b` |
+| **Plan** | ✅ Generated, 4 phases |
+| **Result** | ✅ All phases completed |
+| **Screenshot** | ![](assets/pocs/Gemma4%2026B%20A4B/1.png) |
+
+> **Note:** Calidad prototipo, pero extremadamente rápido con la ejecución. / Prototype quality, but extremely fast execution.
+
+---
+
 ## Comparative results
 
-| Aspect | DeepSeek v4 Flash | Gemini 3.1 Flash Lite | Gemma 4 12B | Devstral Small 2 24B | Ministral 14B Reasoner |
-|--------|:-----------------:|:---------------------:|:-------:|:--------------------:|:----------------------:|
-| Accurate plan | ✅ Yes | ✅ Yes | ✅ Yes| ✅ Yes | ✅ Yes |
-| Working code 1st try | ✅ Yes | ✅ Yes | ✅ Yes (+ one prompt to fix syntax error) | ✅ Yes | ✅ Yes |
-| Review cycles | ✅ Yes | ✅ Yes |  ✅ Yes | ✅ Yes | ✅ Yes |
-| Perceived quality | ✅ High | ✅ High | ⚠️ Medium / Prototype | ⚠️ Medium / Prototype | ❌ Not functional |
+| Aspect | DeepSeek v4 Flash | Gemini 3.1 Flash Lite | Gemma 4 12B | Gemma 4 26B A4B | Devstral Small 2 24B | Ministral 14B Reasoner | Qwen 3 30B-A3B |
+|--------|:-----------------:|:---------------------:|:-------:|:----------------:|:--------------------:|:----------------------:|:---------------------:|
+| Accurate plan | ✅ Yes | ✅ Yes | ✅ Yes| ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| Working code 1st try | ✅ Yes | ✅ Yes | ✅ Yes (+ one prompt to fix syntax error) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (+ one prompt to fix syntax error) |
+| Review cycles | ✅ Yes | ✅ Yes |  ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| Perceived quality | ✅ High | ✅ High | ⚠️ Medium / Prototype | ⚠️ Medium / Prototype *(extremadamente rápido / extremely fast)* | ⚠️ Medium / Prototype | ❌ Not functional | ✅ High |
 
 ---
 

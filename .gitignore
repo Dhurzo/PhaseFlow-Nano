@@ -1,6 +1,9 @@
 # PhaseFlow generated outputs
 outputs/
 
+# Test temp files
+tests/.test-tmp/
+
 # PhaseFlow exploration report
 explore-report.md
 

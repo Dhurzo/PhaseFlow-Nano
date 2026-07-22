@@ -77,30 +77,30 @@ I will be improving this, because it is a side project to accelerate other proje
 
 ### Token Budget
 
-Agent file sizes (plain text, no frontmatter) at ~3:1 byte→token ratio:
+Agent file sizes at ~3:1 byte→token ratio:
 
 | Agent | Bytes | Tokens (~3:1) |
 |--------|------|:---:|
-| phaseflow-planner | 24,914 | ~8,305 |
-| phaseflow-builder | 32,169 | ~10,723 |
-| phaseflow-builder-visual | 9,003 | ~3,001 |
-| phaseflow-orchestrator | 14,948 | ~4,983 |
-| phaseflow-reviewer | 7,215 | ~2,405 |
-| phaseflow-explorer | 5,876 | ~1,959 |
-| phaseflow-refiner | 6,220 | ~2,073 |
-| phaseflow-doctor | 5,439 | ~1,813 |
-| AGENTS.md | 11,531 | ~3,844 |
-| **Per invocation** (agent + AGENTS.md, range) | **16,970 – 43,700** | **~5,657 – ~14,567** |
+| phaseflow-planner | ~24,900 | ~8,300 |
+| phaseflow-builder (dispatch) | ~7,600 | ~2,500 |
+| phaseflow-builder-visual | ~10,000 | ~3,300 |
+| phaseflow-orchestrator | ~12,100 | ~4,000 |
+| phaseflow-reviewer | ~7,000 | ~2,300 |
+| phaseflow-explorer | ~5,900 | ~2,000 |
+| phaseflow-refiner | ~6,100 | ~2,000 |
+| phaseflow-doctor | ~13,500 | ~4,500 |
+| AGENTS.md | ~12,500 | ~4,200 |
+| **Per invocation** (agent + AGENTS.md, range) | **~19,500 – ~37,400** | **~6,500 – ~12,500** |
+
+> 💡 The builder was split into a short dispatch (2.5K tokens) + optional deep reference file (8.1K tokens, read on demand). This keeps the dispatch lean while retaining full detail for complex phases.
 
 PhaseFlow Nano is designed for **10K–30K context windows**.  
-- **10K**: Tight — only works with light agents (doctor, explorer, refiner). Avoid builder/orchestrator.  
+- **10K**: Tight — works with light agents (doctor, explorer, refiner) and now also the builder dispatch (2.5K).  
 - **16K**: Comfortable for most phases with room for tool output.  
-- **30K**: Plenty of headroom for complex phases, large file reads, and tool responses.
+- **30K**: Plenty of headroom for complex phases, large file reads, tool responses, and reading the builder reference file.
 
-With a 30K context window, you have ~15K–24K tokens left for the phase content and tools.
-With 10K, only light agents fit — use a larger model or split phases further for heavy work.
-
-> 💡 The token increase vs previous versions comes from the new **auto-context propagation**, **checkpoint/resume**, **pre-flight validation**, **REQUIRES_FIX auto-retry**, and **smart questioning** features. These make PhaseFlow Nano significantly more robust — especially for local models that need retries and checkpoint recovery.
+With a 30K context window, you have ~17K–23K tokens left for the phase content and tools.
+With 10K, use light agents and the builder dispatch — avoid planner and doctor for heavy work.
 
 ### Model recommendations
 
@@ -137,10 +137,11 @@ Here is what to expect depending on your hardware:
 
 ### ⚠️ Quantization impact on tool-calling reliability
 
-Models under 24B **with heavy quantization (Q4_K_M, Q4_0)** — especially 7B and 14B — can exhibit **unexpected behavior during planning and building**:
+Models under 24B **with heavy quantization (Q4_K_M, Q4_0, iq4_xs, iq4_nl)** — especially 7B and 14B — can exhibit **unexpected behavior during planning and building**:
 
 - **Planning**: The model may analyze the project and describe what it *would* do, but fail to execute `write` tools — no `plan.md` created, no `phases/` directory, no files generated. It responds with content instead of calling tools.
 - **Building**: Similar issues during phase execution — the model describes changes instead of writing files, or writes incomplete content.
+- **Orchestrator infinite loop**: At iq4_xs / Q4_K_M, the orchestrator may get stuck in a "reading the plan" loop because the model tries to call a non-existent `Read:` tool (capital R, colon) instead of the lowercase `read` tool. All agent prompts now explicitly use the correct tool names.
 - **Root cause**: Tool-calling (structured JSON output) is one of the first capabilities to degrade under heavy quantization. Q4 compression introduces enough noise that the model's output distribution shifts, making precise tool invocations unreliable.
 
 **Symptoms are inconsistent** — sometimes it works, sometimes it doesn't, even with the same prompt.
@@ -151,11 +152,27 @@ Models under 24B **with heavy quantization (Q4_K_M, Q4_0)** — especially 7B an
 |---|---|---|
 | 7B | Q8 or FP16 | ✅ Improved, but still limited for complex tasks |
 | 14B | **Q6_K or higher** (Q8_0 ideal) | ✅ Good tool-calling reliability |
+| 14B (iq4_xs/Q4_K_M only) | Must use orchestrator+doctor fixes below | ⚠️ Possible loops — anti-loop safeguards active |
 | 24B+ | Q4_K_M is usually fine | ✅ Better tolerance to quantization |
 
 > Quantization matters more than model size for tool-calling. A 14B at Q6_K will reliably call tools better than a 24B at Q4_K_M in many cases.
 
 > Go below Q4 at your own risk ;D.
+
+### Anti-loop safeguards for heavy quants (Q4_K_M, iq4_xs, iq4_nl)
+
+All agent prompts now include these protections:
+
+| Safeguard | Where | What it does |
+|-----------|-------|-------------|
+| **Write-or-Quit rule** | Builder (top) | Must write a file within first 3 tool calls, or STOP |
+| **Tool-name rule** | Orchestrator + Builder | Explicitly lists correct lowercase tool names; warns `Read:` doesn't exist |
+| **Pre-dispatch integrity check** | Orchestrator | Re-reads `.phase` fresh before dispatching; catches stale states |
+| **Counter increment BEFORE dispatch** | Orchestrator | Loop/retry counters bumped before sub-agent runs — survives crashes |
+| **Single bash cleanup** | Orchestrator | `set -e` block scans all phases, cleans stale counters atomically |
+| **Maximum 8 dispatches per phase** | Orchestrator | Hard `.loop-count` cap prevents pathological loops |
+
+These ensure that even if tool-calling degrades under quantization, the system eventually stops instead of looping indefinitely.
 ---
 
 ## About This Project

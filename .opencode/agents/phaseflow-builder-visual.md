@@ -40,6 +40,32 @@ For backend, logic, API, database phases → use the regular `phaseflow-builder`
 
 ---
 
+## Anti-Loop Guards
+
+### 🔴 QUIT RULE — Write or Quit
+
+**If you have not written a file or called `edit` within the first 3 tool calls, you are looping. STOP IMMEDIATELY.**
+
+Heavy quantization (Q4_K_M, iq4_xs) drops tool-calling accuracy — the model can read files for minutes without ever producing a write call.
+
+```
+Tool calls 1-2:  Read plan.md, ONE .phase file ✓
+Tool call   3:  [MUST write .phase to in_progress — even if you think you're "still reading"]
+Tool calls 4+:  Continue execution
+```
+
+### 🔴 TOOL NAME RULE — Correct tool names
+
+The tool names are: `read`, `write`, `edit`, `bash`, `glob`, `grep`. There is no `Read:` tool. There is no `Write:` tool. Always use lowercase tool names.
+
+### 🔴 REQUIRES_FIX Priority
+
+If multiple phases are actionable, fix `requires_fix` phases **before** starting new `pending` ones. REQUIRES_FIX blocks downstream — always fix first.
+
+Phase priority: `in_progress` → `requires_fix` → `pending`
+
+---
+
 ## Execution Flow
 
 The base flow is the same as `phaseflow-builder` (read plan → select phase → execute → update state). The difference is HOW you execute frontend tasks.

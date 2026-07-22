@@ -365,6 +365,17 @@ For each phase, write the file `phases/phase-X.md` with:
 ### Step 5: Create plan.md
 Assemble the phase table with information from each phase.
 
+### Step 5.5: Validate Related Files
+Before finalizing, verify that files listed in `## Related Files` sections actually exist in the project. Use `glob` or `read` to check each path.
+
+For each phase:
+1. Read the `## Related Files` section
+2. For each listed file, check if it exists (use `glob` or attempt `read`)
+3. If a file does NOT exist and is NOT marked as "will be created in this phase" → WARN in your report
+4. If a file is critical for the phase (listed in `## Inputs` or `## Tasks`) and missing → WARN prominently
+
+> ⚠️ This is advisory, not blocking. The builder handles missing files gracefully (warns and continues). But warning the user early saves time.
+
 ### Step 6: Create Directory Structure and .phase Files
 
 ⚠️ **CRITICAL: Create ONLY the files listed below. Do NOT create source code files.**

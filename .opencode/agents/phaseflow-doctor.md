@@ -37,7 +37,7 @@ Run ALL checks below in order and compile a report at the end.
 ### Step 1 — Check plan.md
 
 ```
-Read: plan.md
+Use the read tool on plan.md
 ```
 
 1. Does `plan.md` exist? If not → report critical error: "No plan.md found. Run /phaseflow-plan first."
@@ -95,7 +95,7 @@ For each COMPLETED or REVIEWED phase, read `outputs/phase-X/CONTEXT.md` (must ex
 ### Step 6 — Check DECISIONS.md
 
 ```
-Read: DECISIONS.md (if exists)
+Use the read tool on DECISIONS.md (if exists)
 ```
 
 If any phases are COMPLETED/REVIEWED/REQUIRES_FIX:
@@ -159,7 +159,7 @@ If all checks pass, report the project is healthy. List the total phase count an
 #### Step F1 — Read and Preserve plan.md Header
 
 ```
-Read: plan.md
+Use the read tool on plan.md
 ```
 
 Extract everything **before** the phase table (the `## Phases` section and above):
@@ -199,7 +199,7 @@ TYPE=$(grep '\*\*Type:\*\*' "phases/phase-$ID.md" 2>/dev/null | sed 's/\*\*Type:
 OUTPUTS=$(grep -iE '^- (Created|Creado|Modified|Modificado|Added|Adds?) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed -E 's/^- [A-Za-z]+ `//;s/\`.*//' | tr '\n' ', ' | sed 's/, $//')
 # Fallback: read from current plan.md table (saved in Step F4)
 if [ -z "$OUTPUTS" ] && [ -f /tmp/pf-fallback.txt ]; then
-  OUTPUTS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f2 | xargs)
+  OUTPUTS=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $2; exit}' /tmp/pf-fallback.txt)
 fi
 
 # 5. Extract Key Decisions from SUMMARY.md
@@ -207,7 +207,7 @@ fi
 DECISIONS=$(grep -iE '^- (Key decision|Decisión clave|Decision):' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed -E 's/^- (Key decision|Decisión clave|Decision): //' | tr '\n' '; ' | sed 's/; $//')
 # Fallback: read from current plan.md table
 if [ -z "$DECISIONS" ] && [ -f /tmp/pf-fallback.txt ]; then
-  DECISIONS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f3 | xargs)
+  DECISIONS=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $3; exit}' /tmp/pf-fallback.txt)
 fi
 
 # 6. Extract Result from REVIEW.md (verdict)
@@ -218,7 +218,7 @@ if [ -z "$RESULT" ]; then
 fi
 # Fallback: read from current plan.md table (saved in Step F4)
 if [ -z "$RESULT" ] && [ -f /tmp/pf-fallback.txt ]; then
-  RESULT=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f4 | xargs)
+  RESULT=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $4; exit}' /tmp/pf-fallback.txt)
 fi
 # Last resort
 if [ -z "$RESULT" ]; then
@@ -267,7 +267,10 @@ echo "" >> "$TMP"
 echo "| # | Name | Type | State | Key Outputs | Key Decisions | File | Result |" >> "$TMP"
 echo "|---|------|------|-------|-------------|---------------|------|--------|" >> "$TMP"
 
-for ID in $(ls phases/phase-*.md 2>/dev/null | sort -V | sed 's/[^0-9]//g'); do
+for phase_file in phases/phase-*.md; do
+  [ -f "$phase_file" ] || continue
+  ID="${phase_file#phases/phase-}"
+  ID="${ID%.md}"
   # Read each variable (from Step F3)
   STATE=$(cat "outputs/phase-$ID/.phase" 2>/dev/null || echo "pending")
   NAME=$(head -1 "phases/phase-$ID.md" 2>/dev/null | sed 's/^# Phase [0-9]*: //')
@@ -275,18 +278,18 @@ for ID in $(ls phases/phase-*.md 2>/dev/null | sort -V | sed 's/[^0-9]//g'); do
   OUTPUTS=$(grep -iE '^- (Created|Creado|Modified|Modificado|Added|Adds?) `' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -3 | sed -E 's/^- [A-Za-z]+ `//;s/\`.*//' | tr '\n' ', ' | sed 's/, $//')
   # Fallback outputs: read from current plan.md table
   if [ -z "$OUTPUTS" ] && [ -f /tmp/pf-fallback.txt ]; then
-    OUTPUTS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f2 | xargs)
+    OUTPUTS=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $2; exit}' /tmp/pf-fallback.txt)
   fi
   DECISIONS=$(grep -iE '^- (Key decision|Decisión clave|Decision):' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | head -2 | sed -E 's/^- (Key decision|Decisión clave|Decision): //' | tr '\n' '; ' | sed 's/; $//')
   # Fallback decisions: read from current plan.md table
   if [ -z "$DECISIONS" ] && [ -f /tmp/pf-fallback.txt ]; then
-    DECISIONS=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f3 | xargs)
+    DECISIONS=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $3; exit}' /tmp/pf-fallback.txt)
   fi
   RESULT=$(grep -A1 '## Final Verdict' "outputs/phase-$ID/REVIEW.md" 2>/dev/null | tail -1 | sed 's/\*\*//g' | xargs)
   if [ -z "$RESULT" ]; then RESULT=$(grep -A2 '## TL;DR' "outputs/phase-$ID/SUMMARY.md" 2>/dev/null | tail -1 | xargs); fi
   # Fallback result: read from current plan.md table
   if [ -z "$RESULT" ] && [ -f /tmp/pf-fallback.txt ]; then
-    RESULT=$(grep "^phase-$ID|" /tmp/pf-fallback.txt | head -1 | cut -d'|' -f4 | xargs)
+    RESULT=$(awk -F'|' -v id="phase-$ID" '$1 == id {print $4; exit}' /tmp/pf-fallback.txt)
   fi
   if [ -z "$RESULT" ]; then RESULT="—"; fi
   

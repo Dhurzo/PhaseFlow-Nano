@@ -92,7 +92,7 @@ safe_copy() {
 
 # ── Copy agent files ─────────────────────────
 echo -e "${BOLD}→ Copying agents to ${CYAN}.opencode/agents/${NC}"
-for agent in phaseflow-explorer phaseflow-planner phaseflow-builder phaseflow-builder-visual phaseflow-reviewer phaseflow-orchestrator phaseflow-refiner phaseflow-doctor; do
+for agent in phaseflow-explorer phaseflow-planner phaseflow-builder phaseflow-builder-REFERENCE phaseflow-builder-visual phaseflow-reviewer phaseflow-orchestrator phaseflow-refiner phaseflow-doctor; do
   dst="$OPENCODE_DIR/agents/$agent.md"
   src="$SCRIPT_DIR/.opencode/agents/$agent.md"
   if [ -f "$src" ]; then
@@ -346,7 +346,7 @@ if [ "$INSTALL_GLOBAL" = true ]; then
   echo ""
   echo -e "${BOLD}→ Installing agents globally → ${CYAN}$GLOBAL_AGENTS_DIR${NC}"
   mkdir -p "$GLOBAL_AGENTS_DIR"
-for agent in phaseflow-explorer phaseflow-planner phaseflow-builder phaseflow-builder-visual phaseflow-reviewer phaseflow-orchestrator phaseflow-refiner phaseflow-doctor; do
+for agent in phaseflow-explorer phaseflow-planner phaseflow-builder phaseflow-builder-REFERENCE phaseflow-builder-visual phaseflow-reviewer phaseflow-orchestrator phaseflow-refiner phaseflow-doctor; do
     src="$SCRIPT_DIR/.opencode/agents/$agent.md"
     if [ -f "$src" ]; then
       cp "$src" "$GLOBAL_AGENTS_DIR/$agent.md"
@@ -366,13 +366,6 @@ for cmd in phaseflow-explore phaseflow-plan phaseflow-build phaseflow-build-visu
       echo -e "  ${GREEN}✓${NC} $cmd (global)"
     fi
   done
-
-  echo ""
-  echo -e "${BOLD}→ Installing AGENTS.md globally${NC}"
-  if [ -f "$SCRIPT_DIR/AGENTS.md" ]; then
-    cp "$SCRIPT_DIR/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-    echo -e "  ${GREEN}✓${NC} AGENTS.md (global)"
-  fi
 
   # Merge into global opencode.json
   echo ""
@@ -508,7 +501,7 @@ echo -e "${GREEN}${BOLD}║  ✅  PhaseFlow Nano installed successfully!  ║${N
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${BOLD}Files installed:${NC}"
-    echo -e "    ${CYAN}•${NC} 8 agents        → ${CYAN}.opencode/agents/${NC}"
+    echo -e "    ${CYAN}•${NC} 9 agents        → ${CYAN}.opencode/agents/${NC}"
     echo -e "    ${CYAN}•${NC} 8 commands      → ${CYAN}.opencode/command/${NC}"
     echo -e "    ${CYAN}•${NC} 6 templates     → ${CYAN}templates/${NC}"
 if [ "$INSTALL_PLUGIN" = true ]; then

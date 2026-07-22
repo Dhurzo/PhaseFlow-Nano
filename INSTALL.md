@@ -103,7 +103,7 @@ cp -r /path/to/phaseflow-nano/.opencode/plugins/model-inheritance .opencode/plug
 /path/to/phaseflow-nano/install.sh --global --plugin
 ```
 
-This copies agents, commands, and `AGENTS.md` to `~/.config/opencode/`.  
+This copies agents and commands to `~/.config/opencode/` (does **not** overwrite your global `AGENTS.md`).  
 After restarting OpenCode, PhaseFlow Nano is available in **every** project.
 
 **Option D — Install into another project:**
