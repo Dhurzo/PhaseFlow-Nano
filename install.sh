@@ -134,7 +134,8 @@ if [ -d "$TEMPLATES_DIR" ]; then
   # Tracker templates (PhaseFlow + project-tracker-kit v2)
   if [ -d "$TEMPLATES_DIR/tracker" ]; then
     mkdir -p "$PROJECT_DIR/templates/tracker"
-    for tmpl in "$TEMPLATES_DIR"/tracker/*.md; do
+    for tmpl in "$TEMPLATES_DIR"/tracker/*; do
+      [ -f "$tmpl" ] || continue
       tmpl_name="$(basename "$tmpl")"
       dst="$PROJECT_DIR/templates/tracker/$tmpl_name"
       if [ "$tmpl" != "$dst" ]; then
@@ -540,7 +541,8 @@ echo ""
 echo -e "  ${BOLD}Files installed:${NC}"
     echo -e "    ${CYAN}•${NC} 9 agents        → ${CYAN}.opencode/agents/${NC}"
     echo -e "    ${CYAN}•${NC} 8 commands      → ${CYAN}.opencode/command/${NC}"
-    echo -e "    ${CYAN}•${NC} 6 templates     → ${CYAN}templates/${NC}"
+    echo -e "    ${CYAN}•${NC} 6 phase + 5 tracker templates → ${CYAN}templates/${NC}"
+    echo -e "    ${CYAN}•${NC} Tracker validator + entry template → ${CYAN}tools/check-tracker.sh${NC}, ${CYAN}tracker-template/TEMPLATE.md${NC}"
 if [ "$INSTALL_PLUGIN" = true ]; then
     echo -e "    ${CYAN}•${NC} Plugin files    → ${CYAN}.opencode/plugins/model-inheritance/${NC}"
 fi
@@ -554,6 +556,7 @@ echo -e "    ${CYAN}/phaseflow-review${NC}        Review the last completed phas
 echo -e "    ${CYAN}/phaseflow-explore${NC}       Analyze an existing codebase"
 echo -e "    ${CYAN}/phaseflow-orchestrate${NC}   Run the full pipeline automatically"
 echo -e "    ${CYAN}/phaseflow-doctor${NC}        Diagnose project health (read-only)"
+echo -e "    ${CYAN}/phaseflow-close-hito${NC}    Close a HITO — MILESTONES + CURRENT_PLAN update"
 echo -e "    ${CYAN}/phaseflow-stop${NC}          Pause the current phase safely"
 echo ""
 echo -e "  ${YELLOW}💡 Tip:${NC} Restart OpenCode for changes to take effect."
