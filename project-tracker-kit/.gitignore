@@ -1,0 +1,6 @@
+# Meta-repo de docs de tracking SOLO. Los repos de producto son git independientes (ignorarlos aquí).
+# [EDITAR: lista los directorios de los repos de producto para que no entren en este repo]
+# producto-*/
+
+.DS_Store
+*.log

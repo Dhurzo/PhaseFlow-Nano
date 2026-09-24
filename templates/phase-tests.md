@@ -38,6 +38,10 @@ Add {{TEST_TYPE}} tests for {{TEST_SCOPE}}. Achieve {{COVERAGE_GOAL}} coverage a
 ## Dependencies
 - Phase {{DEP_PHASE}}: Source code to test
 
+## HITO
+Part-Of: HITO {{HITO_NUM}} | Closes-HITO: {{CLOSES_HITO}} | Gate-HITO: {{GATE_HITO}}
+> 1 HITO = 1–4 fases contiguas. Solo la fase con Closes-HITO: yes ejecuta el protocolo tracker (MILESTONES + rewrite CURRENT_PLAN) al llegar a REVIEWED. Ver templates/tracker/TEMPLATE.md.
+
 ## Completion Criteria
 - [ ] `{{TEST_COMMAND}}` passes with 0 failures
 - [ ] Coverage meets {{COVERAGE_THRESHOLD}}% threshold

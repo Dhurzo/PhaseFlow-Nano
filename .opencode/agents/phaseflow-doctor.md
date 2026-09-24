@@ -109,6 +109,23 @@ If any state mismatches were found in Step 3, or if the plan.md table looks stal
 💡 State mismatches detected. Run `phaseflow-doctor --fix` to regenerate plan.md from canonical .phase files.
 ```
 
+### Step 8 — Check Tracker v2 (MILESTONES.md + CURRENT_PLAN.md + PLAN.MD)
+
+Skip this step silently if `MILESTONES.md` does not exist (legacy project without tracker — report "Tracker: not installed (optional)" as healthy).
+
+If tracker exists, run these 5 checks (same logic as `tools/check-tracker.sh` — you may also run `bash tools/check-tracker.sh` if the script exists):
+
+1. **PLAN.MD stub:** `PLAN.MD` exists and contains `MOVIDO`. If not → WARN: "PLAN.MD must exist as redirect stub (contains 'MOVIDO')".
+2. **Registro headers:** every `## ` heading under `## Registro` matches `^## ([0-9]+(, [0-9]+)*|\(sin hito\)) — .+ \| ([0-9]{4}-[0-9]{2}-[0-9]{2}|—) \| repos: [a-z][a-z0-9]*(,[a-z][a-z0-9]*)*$`. List malformed ones as WARN.
+3. **IDs ↔ Índice:** every numeric ID used in Registro has a `| <id> |` row in `## Índice`. If `(sin hito)` entries exist, `| (sin hito) |` row must exist. Missing → WARN.
+4. **No duplicates:** no duplicated `## ` entry lines in Registro. Duplicates → WARN.
+5. **Siguiente ID libre:** `CURRENT_PLAN.md` declares `Siguiente ID libre de hito: **HITO N**` where N == max(Registro IDs)+1 (0+1=1 if empty). Mismatch or missing → WARN with expected value.
+
+Also check **Mapa HITO ↔ Fases consistency** (informational):
+- `plan.md → ## Mapa HITO ↔ Fases` exists? If not but tracker exists → WARN: "Missing HITO map in plan.md".
+- Every `phases/phase-X.md` has a `## HITO` block? Missing → WARN (list phases).
+- Exactly one `Closes-HITO: yes` per HITO? Violations → WARN.
+
 ---
 
 ## Report Format
@@ -152,7 +169,7 @@ If all checks pass, report the project is healthy. List the total phase count an
 
 **Use when:** State mismatches are detected, or plan.md table is stale.
 
-**What it does:** Regenerates the phase table in `plan.md` from canonical sources — `.phase` files (state), `phases/phase-X.md` (name, type), `SUMMARY.md` (outputs, decisions), and `REVIEW.md` (result). Preserves the plan.md header (project name, goal, snapshot).
+**What it does:** Regenerates the phase table in `plan.md` from canonical sources — `.phase` files (state), `phases/phase-X.md` (name, type), `SUMMARY.md` (outputs, decisions), and `REVIEW.md` (result). Preserves the plan.md header (project name, goal, snapshot). Also validates the tracker (Step 8) and auto-fixes ONLY the `Siguiente ID libre` line in `CURRENT_PLAN.md` if mismatched (never rewrites MILESTONES history).
 
 ### Procedure
 
@@ -312,6 +329,27 @@ After regenerating, report:
    - Run /phaseflow-status to verify
 ```
 
+#### Step F7 — Tracker Validate (+ single-line autofix)
+
+After F6, if `MILESTONES.md` exists:
+
+```bash
+# 1. Prefer the canonical validator when present
+if [ -x tools/check-tracker.sh ]; then bash tools/check-tracker.sh || true; fi
+# 2. Compute max ID from Registro + declared next ID
+max_id=$(awk '/^## Registro$/{r=1;next} r && /^## [0-9]+(, [0-9]+)* — /{s=$0; sub(/^## /,"",s); sub(/ — .*$/,"",s); gsub(/,/," ",s); print s}' MILESTONES.md 2>/dev/null | tr ' ' '\n' | sort -n | tail -1)
+expected=$(( ${max_id:-0} + 1 ))
+declared=$(grep -oE 'Siguiente ID libre de hito: \*\*HITO [0-9]+\*\*' CURRENT_PLAN.md 2>/dev/null | grep -oE '[0-9]+' | head -1)
+echo "Tracker: max_id=${max_id:-0} declared=${declared:-?} expected=$expected"
+# 3. Autofix ONLY the Siguiente ID line (never touch MILESTONES history)
+if [ -n "$declared" ] && [ "$declared" != "$expected" ]; then
+  sed -i "s/Siguiente ID libre de hito: \*\*HITO [0-9]*\*\*/Siguiente ID libre de hito: **HITO $expected**/" CURRENT_PLAN.md
+  echo "Fixed CURRENT_PLAN Siguiente ID: $declared → $expected"
+fi
+```
+
+Report tracker result alongside F6. Never rewrite `MILESTONES.md` entries or `PLAN.MD` content.
+
 ---
 
 ## Mode Detection
@@ -328,7 +366,7 @@ If the user explicitly includes `--fix` but also typed other arguments, still pr
 ## Restrictions
 
 - ✅ **Default mode:** Read files, glob patterns, grep content. Safe, zero side effects.
-- ✅ **`--fix` mode:** May write/edit `plan.md` ONLY. Does not modify `.phase` files, phase files, or any source code.
+- ✅ **`--fix` mode:** May write/edit `plan.md` ONLY + single-line fix of `CURRENT_PLAN.md → Siguiente ID libre`. Does not modify `.phase` files, phase files, MILESTONES history, or any source code.
 - ❌ Do NOT modify `.phase` files — they are the canonical source, not the doctor's job to change.
 - ❌ Do NOT modify any source code, phase files, or output deliverables.
 - ❌ Do NOT create new phases or modify phase structure.

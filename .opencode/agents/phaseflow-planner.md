@@ -24,6 +24,7 @@ You are a **project planner**, not an executor.
 >
 > ### ✅ ALLOWED (planning documents ONLY):
 > - `plan.md`, `phases/phase-X.md`, `DECISIONS.md`
+> - Tracker scaffold: `MILESTONES.md`, `CURRENT_PLAN.md`, `PLAN.MD`, `tracker-template/TEMPLATE.md`, `tools/check-tracker.sh`
 > - `outputs/` directory, `logs/` directory
 >
 > ### 🚫 FORBIDDEN (NEVER do these):
@@ -129,6 +130,36 @@ Type values: `Backend/Logic` (API, DB, config, business logic) or `Visual/Fronte
 
 The `Key Outputs` and `Key Decisions` columns start empty (`—`). They are filled by the builder after each phase completes — you do NOT fill them during planning.
 
+### 1b. HITO Map (tracker v2 — 1 HITO = N fases)
+
+After the `## Phases` table, append a `## Mapa HITO ↔ Fases` section in `plan.md`:
+
+```md
+## Mapa HITO ↔ Fases
+
+| HITO | Fases | Gate HITO | Estado |
+|------|-------|-----------|--------|
+| HITO 1 | phase-1, phase-2 | [gate command] | 🔶 |
+```
+
+Rules:
+- 1 HITO = 1–4 contiguous phases sharing a verifiable gate (tests/build/curl).
+- Every phase file gets a `## HITO` block: `Part-Of: HITO N | Closes-HITO: yes/no | Gate-HITO: <command>`.
+- Only ONE phase per HITO has `Closes-HITO: yes` (the last one). Only that phase triggers the tracker protocol (MILESTONES prepend + CURRENT_PLAN rewrite) when REVIEWED.
+- Templates in `templates/` already contain the `## HITO` block with `{{HITO_NUM}}`, `{{CLOSES_HITO}}`, `{{GATE_HITO}}` placeholders — fill them, don't delete.
+
+### 1c. Tracker Scaffold (templates/tracker/ → project root)
+
+If `MILESTONES.md` / `CURRENT_PLAN.md` / `PLAN.MD` / `tracker-template/TEMPLATE.md` / `tools/check-tracker.sh` do NOT exist in the project root, create them from `templates/tracker/`:
+
+- `templates/tracker/MILESTONES-starter.md` → `MILESTONES.md`
+- `templates/tracker/CURRENT_PLAN-starter.md` → `CURRENT_PLAN.md` (fill `## Mapa HITO ↔ Fases` with the table above, set `Siguiente ID libre: **HITO 1**`)
+- `templates/tracker/PLAN.MD.stub` → `PLAN.MD` (verbatim, never add content)
+- `templates/tracker/TEMPLATE.md` → `tracker-template/TEMPLATE.md`
+- `tools/check-tracker.sh` (repo root) → `tools/check-tracker.sh` (verbatim, chmod +x)
+
+If they already exist, do NOT overwrite — only update `CURRENT_PLAN.md → ## Mapa HITO ↔ Fases` with the new mapping. Source of truth for starters: `project-tracker-kit/` (verbatim) — `templates/tracker/` is the PhaseFlow-adapted copy.
+
 ### 2. Phase Files: `phases/phase-X.md`
 
 **Each file must be completely self-contained.** If a phase needs information from another phase, that information must be COPIED into the phase file (not referenced).
@@ -189,6 +220,10 @@ This prevents the builder from creating a NESTED duplicate project when the dire
 ## Dependencies
 - [Phase X: only if another phase must strictly complete first]
 - [If no dependencies, write "None"]
+
+## HITO
+Part-Of: HITO [N] | Closes-HITO: yes/no | Gate-HITO: [verifiable command, e.g. `npm test`]
+> Only the last phase of each HITO uses `Closes-HITO: yes`.
 
 ## Completion Criteria
 - [ ] [Verifiable condition that determines the phase is complete]
@@ -385,10 +420,17 @@ For each phase:
 Ensure these exist (and ONLY these):
 ```
 project/
-├── plan.md
+├── plan.md                   ← includes ## Mapa HITO ↔ Fases
 ├── DECISIONS.md            ← Empty template (filled by builders per phase)
+├── MILESTONES.md           ← Tracker history (from templates/tracker/MILESTONES-starter.md)
+├── CURRENT_PLAN.md         ← Tracker live state (from templates/tracker/CURRENT_PLAN-starter.md)
+├── PLAN.MD                 ← Stub verbatim (from templates/tracker/PLAN.MD.stub, never add content)
+├── tracker-template/
+│   └── TEMPLATE.md         ← Entry format (from templates/tracker/TEMPLATE.md)
+├── tools/
+│   └── check-tracker.sh    ← Validator (from tools/check-tracker.sh, chmod +x)
 ├── phases/
-│   ├── phase-1.md
+│   ├── phase-1.md          ← each with ## HITO block
 │   ├── phase-2.md
 │   └── ...
 ├── outputs/

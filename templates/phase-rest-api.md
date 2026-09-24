@@ -40,6 +40,10 @@ Create the {{METHOD}} `{{ENDPOINT}}` endpoint that {{PURPOSE}}. Implement reques
 ## Dependencies
 - Phase {{DEP_PHASE}}: {{DEP_NAME}}
 
+## HITO
+Part-Of: HITO {{HITO_NUM}} | Closes-HITO: {{CLOSES_HITO}} | Gate-HITO: {{GATE_HITO}}
+> 1 HITO = 1–4 fases contiguas. Solo la fase con Closes-HITO: yes ejecuta el protocolo tracker (MILESTONES + rewrite CURRENT_PLAN) al llegar a REVIEWED. Ver templates/tracker/TEMPLATE.md.
+
 ## Completion Criteria
 - [ ] `{{METHOD}} {{ENDPOINT}}` returns status {{SUCCESS_STATUS}} with correct response body
 - [ ] Invalid input returns status 400 with descriptive error

@@ -6,7 +6,13 @@
       "description": "Show PhaseFlow project status — reads .phase files as canonical state, and plan.md for project metadata. Shows all phases, states, and next action.",
       "subtask": true,
       "agent": "explore",
-      "template": "Show the PhaseFlow project status. Read plan.md for the project name/goal/snapshot. Then read all .phase files from outputs/phase-*/.phase as the canonical state source. For each phase, also read phases/phase-X.md to get the phase name. Display a clear table with: number, name, type (from phase file header), state (from .phase file), and result (from outputs/phase-X/REVIEW.md verdict if it exists, or SUMMARY.md TL;DR). Highlight which phase is next: first in_progress (resume), then first pending (execute), then first completed (review), then first requires_fix (fix). If plan.md doesn't exist, say 'No PhaseFlow plan found in this project.'"
+      "template": "Show the PhaseFlow project status. Read plan.md for the project name/goal/snapshot and ## Mapa HITO ↔ Fases if present. Then read all .phase files from outputs/phase-*/.phase as the canonical state source. For each phase, also read phases/phase-X.md to get the phase name and ## HITO block. Display a clear table with: number, name, type, HITO (Part-Of + Closes flag), state (from .phase file), and result (from outputs/phase-X/REVIEW.md verdict if it exists, or SUMMARY.md TL;DR). Then show tracker state if MILESTONES.md/CURRENT_PLAN.md exist: last MILESTONES entry header + CURRENT_PLAN Siguiente ID libre + Mapa HITO estados. Highlight which phase is next: first in_progress (resume), then first pending (execute), then first completed (review), then first requires_fix (fix). If plan.md doesn't exist, say 'No PhaseFlow plan found in this project.'"
+    },
+    "phaseflow-close-hito": {
+      "description": "Manually close a HITO — prepend MILESTONES entry + rewrite CURRENT_PLAN from phase TL;DRs. Use when reviewer didn't auto-close or for legacy phases.",
+      "subtask": true,
+      "agent": "phaseflow-reviewer",
+      "template": "Close a PhaseFlow HITO in the tracker (MILESTONES.md + CURRENT_PLAN.md). Inputs: HITO id and title from {{input}} (e.g. '1 — Auth backend'). Steps: 1) Read plan.md → ## Mapa HITO ↔ Fases to get phases for this HITO. 2) Verify every phase in the HITO is REVIEWED (read outputs/phase-X/.phase); if any is not REVIEWED, STOP and report which one blocks. 3) Read tracker-template/TEMPLATE.md for exact format. 4) Read each outputs/phase-X/SUMMARY.md ## TL;DR + REVIEW.md ## Final Verdict as evidence (command → literal output required). 5) Prepend 1 row to MILESTONES.md ## Índice + 1 entry on top of ## Registro (append-only, never rewrite history). 6) Rewrite CURRENT_PLAN.md fully (remove finished, update Próximo trabajo, Mapa HITO row → ✅, Última verificación, bump Siguiente ID libre, prepend Decisiones recientes from DECISIONS.md). 7) Run tools/check-tracker.sh or phaseflow-doctor validation. HITO to close: {{input}}"
     },
     "phaseflow-refine": {
       "description": "Refine a phase file — reads the phase, researches ambiguities, asks clarifying questions, and rewrites it with concrete, actionable prompts",
@@ -15,7 +21,7 @@
       "template": "You are improving a PhaseFlow phase file. Read the specified phase (e.g. phases/phase-1.md) and plan.md. Analyze it for vague tasks, missing inputs, ambiguous decisions, and gray areas. Ask the user targeted questions to clarify. Then rewrite the phase file with the resolved information.\n\nPhase to refine: {{input}}"
     }
   },
-  "plugin": ["model-inheritance"],
+  "plugin": [],
   "permission": {
     "edit": "allow",
     "bash": "allow",

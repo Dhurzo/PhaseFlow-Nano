@@ -395,6 +395,14 @@ Append to (or create) `DECISIONS.md` in the project root. If it doesn't exist, c
 - Each entry should explain **what** was chosen and **why** (brief rationale).
 - If you reversed a prior decision, note it explicitly: "**Reversal:** Switched from X to Y because..."
 
+### Step 8.6b — Tracker Update (1 HITO = N fases, token-cheap)
+
+Read `phases/phase-X.md → ## HITO` (one `grep`, not a full re-read):
+
+- **Intermediate (`Closes-HITO: no`):** edit ONLY `CURRENT_PLAN.md → ## Última verificación por repo` — update/add the row for this repo with `<gate cmd> → <literal output> | <YYYY-MM-DD>`. Do NOT touch `MILESTONES.md`. If tracker files don't exist → skip silently.
+- **HITO-closer (`Closes-HITO: yes`):** do the same intermediate update now. Do NOT write `MILESTONES.md` — the reviewer writes it after APPROVED (Step 8b). Ensure `SUMMARY.md ## TL;DR` has `command → literal output` ready for copy-paste.
+- Never read full `MILESTONES.md` — at most check the top 20 lines for ID context.
+
 ### Step 8.7 — Clean Up Checkpoint and Pause Files
 
 If `CHECKPOINT.md` or `remaining-tasks.md` exist, delete them:

@@ -136,6 +136,15 @@ Write `outputs/phase-X/SUMMARY.md` with `## TL;DR` (required, max 3 lines) and o
 ### Step 8.6 — Append to Decisions Log
 Append decisions to `DECISIONS.md` (one line per decision, with category + rationale).
 
+### Step 8.6b — Tracker Update (1 HITO = N fases)
+
+Read `phases/phase-X.md → ## HITO` for `Part-Of`, `Closes-HITO`, `Gate-HITO`:
+
+- **If `Closes-HITO: no` (intermediate phase):** update ONLY `CURRENT_PLAN.md → ## Última verificación por repo` with the verification command output from this phase (1 row). Do NOT touch `MILESTONES.md`. Keep it to 1–2 lines to save tokens.
+- **If `Closes-HITO: yes` (HITO-closer):** do the intermediate update now, but do NOT write `MILESTONES.md` yet — `MILESTONES.md` is written only after `REVIEWED` (by `phaseflow-close-hito` flow or manual `/phaseflow-review` + close step). Leave the evidence ready in `SUMMARY.md ## TL;DR` (command → literal output, max 3 lines per phase) so the closer can copy it verbatim. If `CURRENT_PLAN.md` / `MILESTONES.md` don't exist, skip silently (tracker optional for legacy projects).
+
+> Token rule: never read full `MILESTONES.md` history. For intermediate phases, read only `CURRENT_PLAN.md → ## Última verificación` section.
+
 ### Step 8.7 — Clean Up and Log
 Delete `CHECKPOINT.md` and `remaining-tasks.md` if they exist. Then write an execution log:
 

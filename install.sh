@@ -131,9 +131,46 @@ if [ -d "$TEMPLATES_DIR" ]; then
     fi
     echo -e "  ${GREEN}✓${NC} $tmpl_name"
   done
+  # Tracker templates (PhaseFlow + project-tracker-kit v2)
+  if [ -d "$TEMPLATES_DIR/tracker" ]; then
+    mkdir -p "$PROJECT_DIR/templates/tracker"
+    for tmpl in "$TEMPLATES_DIR"/tracker/*.md; do
+      tmpl_name="$(basename "$tmpl")"
+      dst="$PROJECT_DIR/templates/tracker/$tmpl_name"
+      if [ "$tmpl" != "$dst" ]; then
+        cp "$tmpl" "$dst"
+      fi
+      echo -e "  ${GREEN}✓${NC} tracker/$tmpl_name"
+    done
+  fi
 else
   echo -e "  ${YELLOW}⚠ templates/ directory not found, skipping${NC}"
 fi
+
+# ── Copy tracker validator + template (no overwrite of history) ──
+echo ""
+echo -e "${BOLD}→ Checking tracker files ${CYAN}(MILESTONES/CURRENT_PLAN)${NC}"
+if [ -f "$SCRIPT_DIR/tools/check-tracker.sh" ]; then
+  mkdir -p "$PROJECT_DIR/tools"
+  if [ ! -f "$PROJECT_DIR/tools/check-tracker.sh" ]; then
+    cp "$SCRIPT_DIR/tools/check-tracker.sh" "$PROJECT_DIR/tools/check-tracker.sh"
+    chmod +x "$PROJECT_DIR/tools/check-tracker.sh"
+    echo -e "  ${GREEN}✓${NC} tools/check-tracker.sh copied"
+  else
+    echo -e "  ${GREEN}✓${NC} tools/check-tracker.sh already exists — skipping"
+  fi
+fi
+if [ -f "$SCRIPT_DIR/templates/tracker/TEMPLATE.md" ]; then
+  mkdir -p "$PROJECT_DIR/tracker-template"
+  if [ ! -f "$PROJECT_DIR/tracker-template/TEMPLATE.md" ]; then
+    cp "$SCRIPT_DIR/templates/tracker/TEMPLATE.md" "$PROJECT_DIR/tracker-template/TEMPLATE.md"
+    echo -e "  ${GREEN}✓${NC} tracker-template/TEMPLATE.md copied"
+  else
+    echo -e "  ${GREEN}✓${NC} tracker-template/TEMPLATE.md already exists — skipping"
+  fi
+fi
+# NOTE: MILESTONES.md / CURRENT_PLAN.md / PLAN.MD are created by phaseflow-planner
+# from templates/tracker/*-starter.md (never overwritten here to protect history).
 
 # ── Copy AGENTS.md ───────────────────────────
 echo ""

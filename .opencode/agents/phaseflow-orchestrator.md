@@ -224,7 +224,7 @@ Go back to **Step 1**.
 
 All phases are in a terminal state.
 
-Read each `outputs/phase-X/SUMMARY.md` that exists with the `read` tool. Extract the `## TL;DR` section (max 3 lines). Also read `DECISIONS.md` if it exists.
+Read each `outputs/phase-X/SUMMARY.md` that exists with the `read` tool. Extract the `## TL;DR` section (max 3 lines). Also read `DECISIONS.md` if it exists. If `MILESTONES.md` exists, read only the top 15 lines (latest entry + Índice header) for the HITO recap — never read full history.
 
 Display a clean report:
 

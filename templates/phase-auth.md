@@ -41,6 +41,10 @@ Implement {{AUTH_TYPE}} authentication: {{AUTH_GOAL}}. Protect API routes with m
 ## Dependencies
 - Phase {{DEP_PHASE}}: Database schema with users table
 
+## HITO
+Part-Of: HITO {{HITO_NUM}} | Closes-HITO: {{CLOSES_HITO}} | Gate-HITO: {{GATE_HITO}}
+> 1 HITO = 1–4 fases contiguas. Solo la fase con Closes-HITO: yes ejecuta el protocolo tracker (MILESTONES + rewrite CURRENT_PLAN) al llegar a REVIEWED. Ver templates/tracker/TEMPLATE.md.
+
 ## Completion Criteria
 - [ ] POST /auth/signup creates user and returns {{SIGNUP_RESPONSE}}
 - [ ] POST /auth/login returns {{LOGIN_RESPONSE}} on valid credentials

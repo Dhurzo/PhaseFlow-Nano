@@ -312,7 +312,20 @@ Parent session (model: Ministral 3 14B)
 | `/phaseflow-orchestrate --gsd` | `phaseflow-orchestrator` | Same as above, plus sync results to GSD `.planning/` files |
 | `/phaseflow-refine` | `phaseflow-refiner` | Refine a vague phase file — research, clarify, rewrite with concrete prompts |
 | `/phaseflow-doctor` | `phaseflow-doctor` | Diagnose project health — validates phases, states, files (read-only) |
+| `/phaseflow-doctor --fix` | `phaseflow-doctor` | Regenerate plan.md from .phase + validate tracker (autofix Siguiente ID) |
 | `/phaseflow-stop` | (built-in) | Pause the currently executing phase — writes `remaining-tasks.md` for clean resume |
-| `/phaseflow-status` | (built-in explore) | Show project status — reads `plan.md`, displays phase table |
+| `/phaseflow-status` | (built-in explore) | Show project status — reads `plan.md` + HITO map + tracker (MILESTONES/CURRENT_PLAN) |
+| `/phaseflow-close-hito` | `phaseflow-reviewer` | Manually close a HITO — MILESTONES prepend + CURRENT_PLAN rewrite from TL;DRs |
 
 > 💡 **`/phaseflow-status`** is a zero-side-effect utility. Use it anytime to check progress without reading files manually.
+
+---
+
+## Tracker Integration (project-tracker-kit v2)
+
+PhaseFlow + tracker trabajan conjuntamente: PhaseFlow ejecuta por fases, el tracker recuerda por HITOs (1 HITO = 1–4 fases).
+
+- **Scaffold:** el planner crea `MILESTONES.md` / `CURRENT_PLAN.md` / `PLAN.MD` / `tracker-template/TEMPLATE.md` / `tools/check-tracker.sh` desde `templates/tracker/`. `install.sh` copia el validador y la plantilla sin tocar el historial.
+- **Ejecución:** fase intermedia (`Closes-HITO: no`) solo toca `CURRENT_PLAN → Última verificación`. Fase cierre (`Closes-HITO: yes` + `REVIEWED`) hace prepend en `MILESTONES` + rewrite de `CURRENT_PLAN` (fuente: `SUMMARY.md ## TL;DR`).
+- **Validación:** `tools/check-tracker.sh → OK` y `phaseflow-doctor --fix` (absorbe los 5 checks + autofix de `Siguiente ID libre`). `PLAN.MD` siempre stub.
+- **Fuente verbatim:** `project-tracker-kit/` (no editar `TEMPLATE.md` ni el protocolo). Adaptación: `templates/tracker/`.

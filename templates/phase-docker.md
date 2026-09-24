@@ -40,6 +40,10 @@ Containerize the application with Docker. Create a production-ready Dockerfile a
 ## Dependencies
 - Phase {{DEP_PHASE}}: Complete application
 
+## HITO
+Part-Of: HITO {{HITO_NUM}} | Closes-HITO: {{CLOSES_HITO}} | Gate-HITO: {{GATE_HITO}}
+> 1 HITO = 1–4 fases contiguas. Solo la fase con Closes-HITO: yes ejecuta el protocolo tracker (MILESTONES + rewrite CURRENT_PLAN) al llegar a REVIEWED. Ver templates/tracker/TEMPLATE.md.
+
 ## Completion Criteria
 - [ ] `docker build` completes without errors
 - [ ] Image size is reasonable ({{EXPECTED_SIZE}} or less)

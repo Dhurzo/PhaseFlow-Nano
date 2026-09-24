@@ -66,6 +66,14 @@ Verify that each **Expected Output** is met:
 | `src/api/users.ts` | ✅ | ✅ |
 | `src/routes/users.ts` | ✅ | ⚠️ Partial |
 
+### Step 2b — Evidence Gate (tracker v2: Done = evidencia ejecutada)
+
+For tracker compliance (required when the phase has `## HITO` with `Closes-HITO: yes`):
+
+1. Read `outputs/phase-X/SUMMARY.md → ## TL;DR`. Does it contain a **command → literal output** pair (e.g. `npm test → 12 passed`)? If not → flag 🟡 Important: "Missing executed evidence — TL;DR must include command → literal output for MILESTONES."
+2. Run or verify the phase's `Gate-HITO` / Completion Criteria evidence yourself where cheap (e.g. `ls`, `grep`, `node --test`). Do NOT trust adjectives ("works", "fast") without numbers.
+3. Verdict rule: if `Closes-HITO: yes` and evidence is missing or unverifiable → verdict MUST be 🔴 REQUIRES CORRECTIONS (blocks the HITO close). Intermediate phases (`Closes-HITO: no`) get 🟡 at most for missing evidence.
+
 ### Step 3 — Bug Audit
 
 For each generated file, look for:
@@ -167,6 +175,16 @@ Write the canonical state to `outputs/phase-X/.phase` based on the verdict:
 | 🔴 REQUIRES CORRECTIONS | `requires_fix` |
 
 > ⚠️ You write ONLY to `.phase`. The `plan.md` table is a **derived view** — it is regenerated from `.phase` files by `phaseflow-doctor --fix`. Do NOT edit plan.md's phase table.
+
+### Step 8b — Tracker Close (only if APPROVED + `Closes-HITO: yes`)
+
+If verdict is APPROVED (or WITH OBSERVATIONS) AND `phases/phase-X.md → ## HITO` says `Closes-HITO: yes`:
+
+1. Read `plan.md → ## Mapa HITO ↔ Fases` to get the HITO id + all phases in the HITO. Read each `outputs/phase-N/SUMMARY.md → ## TL;DR` (max 3 lines each) + this `REVIEW.md → ## Final Verdict` as evidence source. Read `tracker-template/TEMPLATE.md` for exact format.
+2. **MILESTONES.md:** prepend 1 row in `## Índice` + 1 entry on TOP of `## Registro` with format `## <id> — <título> | YYYY-MM-DD | repos: <repos>`, bullets (qué se hizo, evidencia comando → salida literal, límites). Append-only — never rewrite past entries. Get next ID from `CURRENT_PLAN.md → Siguiente ID libre`.
+3. **CURRENT_PLAN.md:** rewrite FULL file — remove finished HITO from *Tareas activas*, update *Próximo trabajo* (next HITO first), update *Mapa HITO ↔ Fases* row to ✅, update *Última verificación por repo* with this gate's command → output + date, bump `Siguiente ID libre: **HITO <max+1>**`, prepend 1 line to *Decisiones recientes* from `DECISIONS.md` (newest on top).
+4. If `MILESTONES.md` / `CURRENT_PLAN.md` don't exist → skip silently (legacy project without tracker).
+5. Never read full MILESTONES history — only check the top entry + Índice to avoid duplicates.
 
 ---
 
