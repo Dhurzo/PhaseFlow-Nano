@@ -8,15 +8,28 @@ description: >-
   automatically", "/phaseflow-orchestrate"
   or "build all phases".
 mode: subagent
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  glob: allow
-  grep: allow
-  write: allow
-  task: allow
-  inherit-task: allow
+permissions:
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: allow
+  - action: inherit-task
+    resource: "*"
+    effect: allow
 ---
 
 # PhaseFlow Orchestrator
@@ -53,9 +66,9 @@ You are an **automated pipeline orchestrator**. You run the full PhaseFlow Nano 
 
 If you haven't done either by call 4, you are looping. Write `outputs/FINAL-REPORT.md` with `╠ Loop detected — no action within 4 tool calls.` and STOP.
 
-**Rule B — Never call tools you don't have.** The correct tool names are: `read`, `write`, `edit`, `bash`, `glob`, `grep`, `inherit-task`, `task`. There is no `Read:` tool. There is no `Write:` tool.
+**Rule B — Never call tools you don't have.** The correct tool names are: `read`, `write`, `edit`, `shell`, `glob`, `grep`, `subagent`, `inherit-task`. There is no `Read:` tool. There is no `Write:` tool. There is no `bash` tool (it is `shell` in OpenCode V2) and no `task` tool (it is `subagent`).
 
-**Rule C — Always include `description` in inherit-task/task calls.** The `description` field is required (3-5 words). Without it, the sub-agent invocation fails.
+**Rule C — Always include `description` in inherit-task/subagent calls.** The `description` field is required (3-5 words). Without it, the sub-agent invocation fails.
 
 **Rule D — Increment loop-counter BEFORE dispatching.** Read N, write N+1, then dispatch. This ensures the counter is always incremented even if the sub-agent crashes.
 
@@ -132,12 +145,12 @@ Based on the phase's state and Type column from plan.md:
 
 **For REQUIRES_FIX phases only:** Before dispatching, also read `outputs/phase-X/.retry-count`. If >= 3, mark ERROR and stop. Otherwise, increment and dispatch (same pattern as loop-count: read N, write N+1).
 
-Use `inherit-task` to invoke the sub-agent. The `inherit-task` tool accepts exactly three required fields: `subagent_type` (the agent name), `description` (short, 3-5 words), and `prompt` (the task instructions). Always provide all three.
+Use `inherit-task` to invoke the sub-agent. The `inherit-task` tool accepts exactly three required fields: `agent` (the agent id), `description` (short, 3-5 words), and `prompt` (the task instructions). Always provide all three.
 
 **PENDING:**
 ```
 inherit-task(
-  subagent_type: "phaseflow-builder",
+  agent: "phaseflow-builder",
   description: "Execute phase X",
   prompt: "Execute phase X from plan.md. This phase is currently PENDING."
 )
@@ -146,7 +159,7 @@ inherit-task(
 **IN_PROGRESS (resume):**
 ```
 inherit-task(
-  subagent_type: "phaseflow-builder",
+  agent: "phaseflow-builder",
   description: "Resume phase X",
   prompt: "Execute phase X from plan.md. This phase is IN_PROGRESS — check outputs/phase-X/remaining-tasks.md and outputs/phase-X/CHECKPOINT.md to see where to resume."
 )
@@ -155,7 +168,7 @@ inherit-task(
 **COMPLETED (review):**
 ```
 inherit-task(
-  subagent_type: "phaseflow-reviewer",
+  agent: "phaseflow-reviewer",
   description: "Review phase X",
   prompt: "Review phase X. Read plan.md, then phases/phase-X.md, then audit outputs/phase-X/."
 )
@@ -164,7 +177,7 @@ inherit-task(
 **REQUIRES_FIX (fix):**
 ```
 inherit-task(
-  subagent_type: "phaseflow-builder" or "phaseflow-builder-visual",
+  agent: "phaseflow-builder" or "phaseflow-builder-visual",
   description: "Fix phase X (N/3)",
   prompt: "Execute phase X from plan.md. This phase is in REQUIRES_FIX state (retry N of 3) — read outputs/phase-X/REVIEW.md, fix the flagged issues, then mark .phase = completed."
 )
@@ -178,7 +191,7 @@ Wait for the sub-agent to complete (the `inherit-task` call returns when done).
 
 ### Step 6 — After-Dispatch Housekeeping
 
-After the sub-agent returns, run this bash block in ONE `bash` call to clean up terminal phases AND write an execution log:
+After the sub-agent returns, run this shell block in ONE `shell` call to clean up terminal phases AND write an execution log:
 
 ```bash
 set -e
@@ -200,17 +213,17 @@ for dir in outputs/phase-*/; do
 done
 ```
 
-This creates a single bash call that:
+This creates a single shell call that:
 1. Writes a timestamped log entry to `logs/orchestrator-YYYY-MM-DD.log` (one line per dispatch)
 2. Scans ALL phases, finds newly-terminal ones, and deletes their counter files atomically
 
-If this bash call fails, log a warning but continue.
+If this shell call fails, log a warning but continue.
 
 Then sync the derived view (plan.md) from canonical .phase files:
 
 ```
 inherit-task(
-  subagent_type: "phaseflow-doctor",
+  agent: "phaseflow-doctor",
   description: "Sync plan.md",
   prompt: "Run phaseflow-doctor --fix to regenerate plan.md from canonical .phase files."
 )
@@ -224,7 +237,7 @@ Go back to **Step 1**.
 
 All phases are in a terminal state.
 
-Read each `outputs/phase-X/SUMMARY.md` that exists with the `read` tool. Extract the `## TL;DR` section (max 3 lines). Also read `DECISIONS.md` if it exists.
+Read each `outputs/phase-X/SUMMARY.md` that exists with the `read` tool. Extract the `## TL;DR` section (max 3 lines). Also read `DECISIONS.md` if it exists. If `MILESTONES.md` exists, read only the top 15 lines (latest entry + Índice header) for the HITO recap — never read full history.
 
 Display a clean report:
 
@@ -296,5 +309,5 @@ If the orchestrator crashes after dispatching but before incrementing, a stale c
 - **Never skip the reviewer** — every COMPLETED phase must be reviewed.
 - **Never continue past BLOCKED or ERROR** — stop and report.
 - **Always include `description` in inherit-task calls** — it's required.
-- **Use `inherit-task` over `task`** — it preserves this session's model for sub-agents.
-- **Use `task` as fallback** if `inherit-task` is unavailable.
+- **Use `inherit-task` over `subagent`** — it preserves this session's model for sub-agents even if an agent defines its own `model`.
+- **Use `subagent` as fallback** if `inherit-task` is unavailable.

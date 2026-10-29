@@ -1,8 +1,5 @@
 ---
 description: 'Runs the full pipeline unattended — builder → reviewer loop for ALL phases.'
-tools:
-  inherit-task: true
-  task: true
 ---
 
 Runs the entire PhaseFlow Nano pipeline automatically without manual intervention.

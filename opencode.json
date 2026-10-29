@@ -1,179 +1,156 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["AGENTS.md"],
-  "command": {
+  "commands": {
     "phaseflow-status": {
       "description": "Show PhaseFlow project status — reads .phase files as canonical state, and plan.md for project metadata. Shows all phases, states, and next action.",
-      "subtask": true,
+      "subagent": true,
       "agent": "explore",
-      "template": "Show the PhaseFlow project status. Read plan.md for the project name/goal/snapshot. Then read all .phase files from outputs/phase-*/.phase as the canonical state source. For each phase, also read phases/phase-X.md to get the phase name. Display a clear table with: number, name, type (from phase file header), state (from .phase file), and result (from outputs/phase-X/REVIEW.md verdict if it exists, or SUMMARY.md TL;DR). Highlight which phase is next: first in_progress (resume), then first pending (execute), then first completed (review), then first requires_fix (fix). If plan.md doesn't exist, say 'No PhaseFlow plan found in this project.'"
+      "template": "Show the PhaseFlow project status. Read plan.md for the project name/goal/snapshot and ## Mapa HITO ↔ Fases if present. Then read all .phase files from outputs/phase-*/.phase as the canonical state source. For each phase, also read phases/phase-X.md to get the phase name and ## HITO block. Display a clear table with: number, name, type, HITO (Part-Of + Closes flag), state (from .phase file), and result (from outputs/phase-X/REVIEW.md verdict if it exists, or SUMMARY.md TL;DR). Then show tracker state if MILESTONES.md/CURRENT_PLAN.md exist: last MILESTONES entry header + CURRENT_PLAN Siguiente ID libre + Mapa HITO estados. Highlight which phase is next: first in_progress (resume), then first pending (execute), then first completed (review), then first requires_fix (fix). If plan.md doesn't exist, say 'No PhaseFlow plan found in this project.'"
+    },
+    "phaseflow-close-hito": {
+      "description": "Manually close a HITO — prepend MILESTONES entry + rewrite CURRENT_PLAN from phase TL;DRs. Use when reviewer didn't auto-close or for legacy phases.",
+      "subagent": true,
+      "agent": "phaseflow-reviewer",
+      "template": "Close a PhaseFlow HITO in the tracker (MILESTONES.md + CURRENT_PLAN.md). Inputs: HITO id and title from {{input}} (e.g. '1 — Auth backend'). Steps: 1) Read plan.md → ## Mapa HITO ↔ Fases to get phases for this HITO. 2) Verify every phase in the HITO is REVIEWED (read outputs/phase-X/.phase); if any is not REVIEWED, STOP and report which one blocks. 3) Read tracker-template/TEMPLATE.md for exact format. 4) Read each outputs/phase-X/SUMMARY.md ## TL;DR + REVIEW.md ## Final Verdict as evidence (command → literal output required). 5) Prepend 1 row to MILESTONES.md ## Índice + 1 entry on top of ## Registro (append-only, never rewrite history). 6) Rewrite CURRENT_PLAN.md fully (remove finished, update Próximo trabajo, Mapa HITO row → ✅, Última verificación, bump Siguiente ID libre, prepend Decisiones recientes from DECISIONS.md). 7) Run tools/check-tracker.sh or phaseflow-doctor validation. HITO to close: {{input}}"
     },
     "phaseflow-refine": {
       "description": "Refine a phase file — reads the phase, researches ambiguities, asks clarifying questions, and rewrites it with concrete, actionable prompts",
-      "subtask": true,
+      "subagent": true,
       "agent": "phaseflow-refiner",
       "template": "You are improving a PhaseFlow phase file. Read the specified phase (e.g. phases/phase-1.md) and plan.md. Analyze it for vague tasks, missing inputs, ambiguous decisions, and gray areas. Ask the user targeted questions to clarify. Then rewrite the phase file with the resolved information.\n\nPhase to refine: {{input}}"
     }
   },
-  "plugin": ["model-inheritance"],
-  "permission": {
-    "edit": "allow",
-    "bash": "allow",
-    "read": "allow",
-    "glob": "allow",
-    "grep": "allow",
-    "list": "allow",
-    "webfetch": "allow",
-    "websearch": "allow",
-    "todowrite": "allow",
-    "question": "allow",
-    "inherit-task": "allow",
-    "external_directory": {
-      "*": "allow"
-    }
-  },
-  "agent": {
+  "plugins": [],
+  "permissions": [
+    { "action": "edit", "resource": "*", "effect": "allow" },
+    { "action": "shell", "resource": "*", "effect": "allow" },
+    { "action": "read", "resource": "*", "effect": "allow" },
+    { "action": "glob", "resource": "*", "effect": "allow" },
+    { "action": "grep", "resource": "*", "effect": "allow" },
+    { "action": "webfetch", "resource": "*", "effect": "allow" },
+    { "action": "websearch", "resource": "*", "effect": "allow" },
+    { "action": "question", "resource": "*", "effect": "allow" },
+    { "action": "subagent", "resource": "*", "effect": "allow" },
+    { "action": "inherit-task", "resource": "*", "effect": "allow" },
+    { "action": "external_directory", "resource": "*", "effect": "allow" },
+    { "action": "read", "resource": "*.env", "effect": "ask" },
+    { "action": "read", "resource": "*.env.*", "effect": "ask" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" }
+  ],
+  "agents": {
     "phaseflow-explorer": {
       "description": "Codebase explorer. Investigates existing projects to identify the tech stack, patterns, file structure, and technical debt. Use BEFORE phaseflow-planner when the project already has code.",
       "mode": "subagent",
       "color": "#10B981",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
     "phaseflow-planner": {
       "description": "Project planner. Analyzes requests and splits them into independent, self-contained phases. When the project has existing code, it analyzes the codebase to map relevant files into each phase. Asks clarifying questions when requirements are vague. NEVER executes tasks.",
       "mode": "subagent",
       "color": "#6366F1",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "question": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "question", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
-
     "phaseflow-builder": {
       "description": "Sequential phase executor. Reads plans generated by phaseflow-planner, executes pending phases one at a time, and persists all progress in files. 🔒 Pre-flight check: verifies previous phase is COMPLETED/REVIEWED before starting.",
       "mode": "subagent",
       "color": "#F59E0B",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
     "phaseflow-builder-visual": {
       "description": "UI-specialized phase executor. Handles frontend, UI, and visual experience: CSS, React/Vue/Svelte components, responsive design, accessibility, and micro-interactions.",
       "mode": "subagent",
       "color": "#EC4899",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
     "phaseflow-reviewer": {
       "description": "Post-phase code auditor. Reviews each phase's deliverables for bugs, vulnerabilities, duplicated code, and plan deviations. Use AFTER each phase completed by phaseflow-builder.",
       "mode": "subagent",
       "color": "#EF4444",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
     "phaseflow-orchestrator": {
-      "description": "Automated pipeline orchestrator. Reads plan.md, invokes phaseflow-builder/phaseflow-reviewer in a loop with fresh context each time, and stops when all phases reach a terminal state (REVIEWED, BLOCKED, ERROR). Use to run the full plan unattended.",
+      "description": "Automated pipeline orchestrator. Reads .phase files and plan.md for metadata, invokes phaseflow-builder/phaseflow-reviewer in a loop with fresh context each time, and stops when all phases reach a terminal state (REVIEWED, BLOCKED, ERROR). Use to run the full plan unattended.",
       "mode": "subagent",
       "color": "#8B5CF6",
-      "permission": {
-        "edit": "allow",
-        "bash": "allow",
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "task": "allow",
-        "inherit-task": "allow",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "allow" },
+        { "action": "inherit-task", "resource": "*", "effect": "allow" }
+      ]
     },
     "phaseflow-refiner": {
       "description": "Phase prompt engineer. Reads a phase-N.md file, identifies ambiguities and gray areas, asks clarifying questions, researches technologies, and rewrites the phase with concrete, actionable prompts.",
       "mode": "subagent",
       "color": "#F97316",
-      "permission": {
-        "read": "allow",
-        "write": "allow",
-        "edit": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "question": "allow",
-        "webfetch": "allow",
-        "websearch": "allow",
-        "bash": "deny",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "question", "resource": "*", "effect": "allow" },
+        { "action": "webfetch", "resource": "*", "effect": "allow" },
+        { "action": "websearch", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "deny" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     },
     "phaseflow-doctor": {
       "description": "Project diagnostician — validates phase structure, states, and file consistency. Read-only diagnostic by default; use with '--fix' argument to regenerate plan.md from canonical .phase files.",
       "mode": "subagent",
       "color": "#06B6D4",
-      "permission": {
-        "read": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "write": "allow",
-        "edit": "allow",
-        "bash": "allow",
-        "task": "deny",
-        "external_directory": {
-          "*": "allow"
-        }
-      }
+      "permissions": [
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "edit", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
     }
+  },
+  "experimental": {
+    "todo": true,
+    "subagent_depth": 2
   }
 }

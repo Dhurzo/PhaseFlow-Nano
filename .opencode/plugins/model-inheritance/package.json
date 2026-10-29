@@ -1,9 +1,13 @@
 {
   "name": "model-inheritance",
-  "version": "1.0.0",
-  "description": "Minimal plugin that makes sub-agents inherit the parent session's model",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "OpenCode V2 plugin that makes sub-agents inherit the parent session's model",
   "type": "module",
   "license": "MIT",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": ["index.js"],
   "dependencies": {}
 }

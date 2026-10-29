@@ -11,6 +11,10 @@
 **Multi-agent system for [OpenCode](https://opencode.ai) optimized for local models with 10K–30K context windows.**  
 Zero runtime dependencies. Pure markdown agents. ~1.8K–10.7K tokens per agent (see [Token Budget](#token-budget)).
 
+> ⚙️ **Requires OpenCode ≥ 2.0 (V2).** The config, permission, command and plugin
+> APIs used here are V2-native. See [`INSTALL.md → Migrating from V1`](INSTALL.md#migrating-from-v1)
+> to upgrade an existing V1 setup.
+
 Inspired by [Oh-My-OpenAgent](https://github.com/code-yeongyu/oh-my-openagent) (62K ⭐) and [GSD](https://github.com/rokicool/gsd-opencode) but reimagined for **local and small models** running on consumer hardware. No TypeScript, no build step, no 200K context required.
 
 **This project prioritizes simplicity above all else.** Every design decision — markdown agents, file-based state, sequential phases, zero dependencies — is a deliberate choice to keep the system understandable, debuggable, and easy to modify by anyone, even without TypeScript experience.
@@ -27,7 +31,7 @@ I will be improving this, because it is a side project to accelerate other proje
 ## Features
 
 - 🪶 **~5.7K–14.6K tokens per invocation** (agent file + AGENTS.md) — fits comfortably in 16K+ context windows; tight but workable in 10K with light agents
-- 🔌 **Zero runtime dependencies** — core is pure markdown (one optional 145-line plugin)
+- 🔌 **Zero runtime dependencies** — core is pure markdown (one optional, dependency-free plugin)
 - 🧠 **8 specialized agents** — explorer, planner, builder (x2), reviewer, orchestrator, refiner, doctor
 - 🔁 **Auto-retry on REQUIRES_FIX** — orchestrator re-invokes builder with REVIEW.md up to 3×
 - 🩺 **Project doctor** — `/phaseflow-doctor` diagnoses phase structure, states, and file consistency (read-only)
@@ -194,6 +198,8 @@ It is **still experimental** and evolving based on real usage. Some parts are ro
 > - [Manual commands use the wrong model](TROUBLESHOOTING.md#manual-commands-still-use-the-wrong-model-phaseflow-build-phaseflow-plan-etc)
 > - [Commands not showing up](TROUBLESHOOTING.md#commands-not-showing-up)
 > - [Config validation errors](TROUBLESHOOTING.md#config-validation-errors)
+> - [Missing `description` when dispatching a sub-agent](TROUBLESHOOTING.md#missing-key-at-description-when-dispatching-a-sub-agent)
+> - [`subagent_depth` error](TROUBLESHOOTING.md#subagent_depth-error--the-orchestrator-cannot-launch-builders)
 
 ---
 

@@ -1,14 +1,10 @@
 ---
-description: Audit the code generated in a phase (bugs, security, quality, compliance)
-argument-hint: "[phase number]"
-tools:
-  task: true
-  inherit-task: true
+description: Audit the code generated in a phase (bugs, security, quality, compliance) — optional phase number
 ---
 
 Reviews the deliverables of a completed phase to detect issues before continuing.
 
-Call the `phaseflow-reviewer` sub-agent via `inherit-task` (preferred) or `task` (fallback) with `subagent_type="phaseflow-reviewer"`. Do NOT review directly — delegate to the sub-agent.
+Call the `phaseflow-reviewer` sub-agent via `inherit-task` (preferred) or `subagent` (fallback) with `agent="phaseflow-reviewer"`. Do NOT review directly — delegate to the sub-agent.
 
 The sub-agent audits:
 - ✅ Plan compliance (expected outputs)

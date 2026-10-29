@@ -6,14 +6,25 @@ description: >-
   type UI, frontend, design, visual components, or styling. Invoked
   like phaseflow-builder but for phases marked as visual/frontend work.
 mode: subagent
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  glob: allow
-  grep: allow
-  write: allow
-  task: deny
+permissions:
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # PhaseFlow Builder — Visual
@@ -56,7 +67,7 @@ Tool calls 4+:  Continue execution
 
 ### 🔴 TOOL NAME RULE — Correct tool names
 
-The tool names are: `read`, `write`, `edit`, `bash`, `glob`, `grep`. There is no `Read:` tool. There is no `Write:` tool. Always use lowercase tool names.
+The tool names are: `read`, `write`, `edit`, `shell`, `glob`, `grep`. There is no `Read:` tool. There is no `Write:` tool. Always use lowercase tool names. The shell tool is `shell` in OpenCode V2 (not `bash`).
 
 ### 🔴 REQUIRES_FIX Priority
 

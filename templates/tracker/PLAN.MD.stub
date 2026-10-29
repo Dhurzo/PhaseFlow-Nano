@@ -1,0 +1,8 @@
+# PLAN.MD — MOVIDO
+
+Este tracker se dividió en dos ficheros de la raíz:
+
+- Histórico append-only (todo lo que se ha hecho): **`MILESTONES.md`**
+- Trabajo activo / próximo paso: **`CURRENT_PLAN.md`**
+
+Protocolo de actualización: `AGENTS.md` §Cómo registrar avances. No añadir contenido aquí.

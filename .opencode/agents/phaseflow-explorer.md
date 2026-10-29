@@ -6,14 +6,25 @@ description: >-
   with "explore the project", "analyze the codebase", "map existing
   code", or "investigate before planning".
 mode: subagent
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  glob: allow
-  grep: allow
-  write: allow
-  task: deny
+permissions:
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # PhaseFlow Explorer
@@ -42,7 +53,7 @@ If the project is empty (greenfield), do NOT execute — phaseflow-planner does 
 
 ### Step 1 — Scan the Structure
 
-Use `glob`, `read` (directories), and `bash` to map the file structure:
+Use `glob`, `read` (directories), and `shell` to map the file structure:
 
 ```
 src/
