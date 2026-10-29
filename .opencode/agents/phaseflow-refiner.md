@@ -4,17 +4,34 @@ description: >-
   and gray areas, researches technologies, asks clarifying questions,
   and rewrites the phase with concrete, actionable prompts.
 mode: subagent
-permission:
-  read: allow
-  write: allow
-  edit: allow
-  glob: allow
-  grep: allow
-  question: allow
-  webfetch: allow
-  websearch: allow
-  bash: deny
-  task: deny
+permissions:
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: question
+    resource: "*"
+    effect: allow
+  - action: webfetch
+    resource: "*"
+    effect: allow
+  - action: websearch
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # PhaseFlow Refiner

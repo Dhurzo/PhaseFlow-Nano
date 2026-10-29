@@ -2,6 +2,8 @@
 description: >-
   Reference guide for phaseflow-builder detailed execution. Not a standalone
   agent — read this file from builder.md for expanded instructions.
+mode: subagent
+hidden: true
 ---
 
 # PhaseFlow Builder — Reference

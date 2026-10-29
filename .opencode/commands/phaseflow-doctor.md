@@ -1,8 +1,5 @@
 ---
 description: 'Diagnose project health — validates phases, states, files. Safe, read-only.'
-tools:
-  task: true
-  inherit-task: true
 ---
 
 Diagnose the PhaseFlow project structure and health.

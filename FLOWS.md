@@ -44,8 +44,8 @@
            ▼
        ┌──────────┐     ┌──────────┐
        │ builder  │────▶│ reviewer │  ← Fresh context per invocation
-       │(inherit- │     │(inherit- │     via sub-agents (inherits model)
-       │  task)   │     │  task)   │
+       │inherit-  │     │inherit-  │     via sub-agents (inherits model)
+       │task)     │     │task)     │
        └────┬─────┘     └────┬─────┘
             │                │
             │         ┌──────┘

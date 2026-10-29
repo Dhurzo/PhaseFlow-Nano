@@ -1,14 +1,10 @@
 ---
-description: Execute UI/Frontend phases with design sensibility (components, CSS, accessibility)
-argument-hint: "[optional phase number]"
-tools:
-  task: true
-  inherit-task: true
+description: Execute UI/Frontend phases with design sensibility (components, CSS, accessibility) — optional phase number
 ---
 
 Execute phases of type UI, frontend, or visual design.
 
-Call the `phaseflow-builder-visual` sub-agent via `inherit-task` (preferred) or `task` (fallback) with `subagent_type="phaseflow-builder-visual"`. Do NOT execute UI phases directly — delegate to the sub-agent.
+Call the `phaseflow-builder-visual` sub-agent via `inherit-task` (preferred) or `subagent` (fallback) with `agent="phaseflow-builder-visual"`. Do NOT execute UI phases directly — delegate to the sub-agent.
 
 The sub-agent applies:
 - Quality visual design (not generic AI aesthetics)

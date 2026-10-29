@@ -214,10 +214,10 @@ Each phase also has a **Type**: `Backend/Logic` or `Visual/Frontend`. Key Output
 
 ## Rules for the Primary Agent
 
-1. **Explore first** if the project has code → invoke `phaseflow-explorer` via `inherit-task` (preferred) or `task` (fallback). Do NOT explore directly.
-2. **Plan** → invoke `phaseflow-planner` via `inherit-task` (preferred) or `task` (fallback). Do NOT plan directly.
-3. **Execute phase** → invoke `phaseflow-builder` (or `phaseflow-builder-visual` if UI) via `inherit-task` (preferred) or `task` (fallback). Do NOT execute directly.
-4. **Review** → invoke `phaseflow-reviewer` via `inherit-task` (preferred) or `task` (fallback) AFTER the builder completes. Do NOT review directly.
+1. **Explore first** if the project has code → invoke `phaseflow-explorer` via `inherit-task` (preferred) or `subagent` (fallback). Do NOT explore directly.
+2. **Plan** → invoke `phaseflow-planner` via `inherit-task` (preferred) or `subagent` (fallback). Do NOT plan directly.
+3. **Execute phase** → invoke `phaseflow-builder` (or `phaseflow-builder-visual` if UI) via `inherit-task` (preferred) or `subagent` (fallback). Do NOT execute directly.
+4. **Review** → invoke `phaseflow-reviewer` via `inherit-task` (preferred) or `subagent` (fallback) AFTER the builder completes. Do NOT review directly.
 5. **Stop after ONE sub-agent invocation.** After invoking a planner, builder, reviewer, or explorer, STOP. Report the result to the user and tell them what the next step is. The user will trigger the next invocation manually. Do NOT invoke the orchestrator or any additional agent automatically.
 6. NEVER try to plan and execute in the same conversation
 7. Context resets between builder/reviewer invocations

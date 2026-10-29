@@ -37,53 +37,109 @@ it skips initialization entirely.
 
 ### Sub-agents still use the wrong model
 
-1. Verify the plugin is installed:
+1. Verify the plugin is installed and active:
    ```bash
-   node -e "require('model-inheritance'); console.log('✅')"
+   opencode api get "/api/plugin?location%5Bdirectory%5D=$(pwd)"
    ```
-2. Check the orchestrator permissions — should have `"task": "allow"` and `"inherit-task": "allow"`:
+   It should list `model-inheritance | local | active`.
+2. Check the orchestrator permissions — should have a `subagent` allow **and** an `inherit-task` allow:
    ```bash
-   node -e "const c=require('./opencode.json'); console.log(JSON.stringify(c.agent['phaseflow-orchestrator']?.permission))"
+   node -e "const c=require('./opencode.json'); console.log(JSON.stringify(c.agents['phaseflow-orchestrator']?.permissions))"
    ```
-3. Make sure the command file uses `inherit-task` (not `task`):
+3. Make sure the command file uses `inherit-task` (not `subagent`):
    ```bash
-   head -7 .opencode/command/phaseflow-orchestrate.md
+   head -7 .opencode/commands/phaseflow-orchestrate.md
    ```
+
+> 💡 In OpenCode V2 the built-in `subagent` tool already inherits the parent
+> session's model when the agent defines no `model` of its own. If a sub-agent
+> still uses a different model, check whether that agent pins a `model` in
+> `opencode.json` or in its `.md` frontmatter.
 
 ---
 
 ### Manual commands still use the wrong model (`/phaseflow-build`, `/phaseflow-plan`, etc.)
 
-Manual commands (`/phaseflow-build`, `/phaseflow-plan`, `/phaseflow-review`) use the built-in `task` tool by default, which may not inherit the parent session's model.
+Manual commands (`/phaseflow-build`, `/phaseflow-plan`, `/phaseflow-review`) delegate
+to the built-in `subagent` tool, which inherits the parent model unless the target
+agent pins its own.
 
-**Fix:** Install the model-inheritance plugin, then edit each command file in `.opencode/command/` to enable `inherit-task` alongside `task`:
+**Fix:** Remove any `model:` pin from the agent definition, or install the
+model-inheritance plugin and let the command prefer `inherit-task`:
 
-```yaml
-tools:
-  task: true
-  inherit-task: true
+```bash
+/path/to/phaseflow-nano/install.sh --plugin
 ```
 
-Then update the command text to prefer `inherit-task`. The command template will then use `inherit-task` when available (inheriting your model) and fall back to `task` otherwise. See the [orchestrate command](.opencode/command/phaseflow-orchestrate.md) for reference.
+Then update the command text in `.opencode/commands/` to prefer `inherit-task`.
+See the [orchestrate command](.opencode/commands/phaseflow-orchestrate.md) for reference.
+
+> ⚠️ **V1 leftovers:** the `tools:` frontmatter block (e.g. `task: true`) was
+> removed in V2 — `Config.CommandEncoded` rejects unknown fields. If OpenCode
+> reports a command validation error, delete the `tools:` block from the
+> command's frontmatter.
 
 Alternatively, use `/phaseflow-orchestrate` to run phases automatically — it always uses `inherit-task` correctly.
 
 ### Commands not showing up
 
-- Commands must be in `.opencode/command/` (project), `~/.config/opencode/command/` (global), or defined inline in `opencode.json` under the `command` key
-- Restart OpenCode after adding new commands
+- Commands must be in `.opencode/commands/` (project), `~/.config/opencode/commands/` (global), or defined inline in `opencode.json` under the `commands` key
+- OpenCode V2 reloads command files automatically — **no restart needed** (V1 required one)
+- Only `.md` files are discovered
 - Verify the command file has valid YAML frontmatter (for file-based commands) or valid JSON (for inline commands in `opencode.json`)
+- The legacy singular `command/` directory is still read by V2, but stale copies there shadow the new ones — delete it (`install.sh` removes it automatically)
 
 ---
 
 ### Config validation errors
 
-OpenCode supports these permission values:
-- `"allow"` — always allowed
-- `"ask"` — ask the user
-- `"deny"` — always denied
+OpenCode V2 permissions are an **ordered array of rules** with three string fields:
 
-Invalid values (like `"forbid"`) will cause OpenCode to reject the entire config.
+```jsonc
+{ "action": "shell", "resource": "*", "effect": "allow" }
+```
+
+- `action` — permission action (`read`, `edit`, `glob`, `grep`, `shell`, `subagent`, `skill`, `question`, `webfetch`, `websearch`, `external_directory`, `<server>_<tool>`)
+- `resource` — path, command, URL, query, skill id or agent id (`*` wildcards supported)
+- `effect` — `allow`, `ask` or `deny`
+
+The **last matching rule wins**, so put broad rules first and exceptions last.
+
+Invalid values (like `"forbid"`, or a V1 `"permission": { ... }` map) will cause OpenCode to reject the entire config. Migrate with:
+
+```bash
+node tools/migrate-config-v1-to-v2.js opencode.json --dry-run
+```
+
+---
+
+### "Missing key at ['description']" when dispatching a sub-agent
+
+Both the built-in `subagent` tool and the `inherit-task` plugin require
+`description`. The orchestrator prompt enforces this, but a manual call may not.
+
+```text
+inherit-task(
+  agent: "phaseflow-builder",     # V2 field name — not `subagent_type`
+  description: "Execute phase 2", # required
+  prompt: "Execute phase 2 from plan.md."
+)
+```
+
+---
+
+### "subagent_depth" error — the orchestrator cannot launch builders
+
+OpenCode V2 allows one level of subagent nesting by default. The orchestrator is
+itself a subagent and launches builders/reviewers, so two levels are required:
+
+```jsonc
+{
+  "experimental": {
+    "subagent_depth": 2
+  }
+}
+```
 
 ---
 

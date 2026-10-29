@@ -92,9 +92,12 @@ describe("tracker integration", () => {
     }
   });
 
-  it("opencode.json has phaseflow-close-hito + tracker-aware status", () => {
+  it("opencode.json uses the V2 commands map with phaseflow-close-hito + tracker-aware status", () => {
     const cfg = JSON.parse(readFileSync(join(ROOT, "opencode.json"), "utf8"));
-    assert.ok(cfg.command["phaseflow-close-hito"], "missing command phaseflow-close-hito");
-    assert.ok(/Mapa HITO/.test(cfg.command["phaseflow-status"].template), "status must include HITO map");
+    assert.ok(!cfg.command, "V1 singular `command` map must be removed");
+    assert.ok(!cfg.agent, "V1 singular `agent` map must be removed");
+    assert.ok(!cfg.permission, "V1 `permission` map must be removed");
+    assert.ok(cfg.commands["phaseflow-close-hito"], "missing command phaseflow-close-hito");
+    assert.ok(/Mapa HITO/.test(cfg.commands["phaseflow-status"].template), "status must include HITO map");
   });
 });

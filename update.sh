@@ -138,5 +138,5 @@ echo -e "${GREEN}${BOLD}║  ✅  PhaseFlow Nano updated successfully!   ║${NC
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${BOLD}Updated to:${NC} ${CURRENT_COMMIT_AFTER:0:7}"
-echo -e "  ${YELLOW}💡 Tip:${NC} Restart OpenCode for changes to take effect."
+echo -e "  ${YELLOW}💡 Tip:${NC} OpenCode V2 reloads config, agents, commands and plugins automatically."
 echo ""

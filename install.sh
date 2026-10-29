@@ -76,7 +76,7 @@ fi
 
 # ── Create directories ───────────────────────
 mkdir -p "$OPENCODE_DIR/agents"
-mkdir -p "$OPENCODE_DIR/command"
+mkdir -p "$OPENCODE_DIR/commands"
 
 # ── safe_copy: avoid cp "same file" error ────
 safe_copy() {
@@ -88,6 +88,27 @@ safe_copy() {
   fi
   cp "$src" "$dst"
   echo -e "  ${GREEN}✓${NC} installed"
+}
+
+# ── Remove the legacy singular `command/` copies ────
+# OpenCode V2 discovers both `command/` and `commands/`. The legacy copies from
+# a previous install would shadow the V2 ones, so drop them once the new files
+# are in place. Only PhaseFlow's own files are removed.
+remove_legacy_commands() {
+  local legacy_dir="$1"
+  local current_dir="$2"
+  [ -d "$legacy_dir" ] || return 0
+  local removed=0
+  for cmd in phaseflow-explore phaseflow-plan phaseflow-build phaseflow-build-visual phaseflow-review phaseflow-orchestrate phaseflow-doctor phaseflow-stop; do
+    if [ -f "$legacy_dir/$cmd.md" ] && [ -f "$current_dir/$cmd.md" ]; then
+      rm -f "$legacy_dir/$cmd.md"
+      removed=$((removed + 1))
+    fi
+  done
+  if [ "$removed" -gt 0 ]; then
+    echo -e "  ${GREEN}✓${NC} Removed $removed legacy file(s) from ${CYAN}$legacy_dir${NC}"
+  fi
+  rmdir "$legacy_dir" 2>/dev/null || true
 }
 
 # ── Copy agent files ─────────────────────────
@@ -105,10 +126,10 @@ done
 
 # ── Copy command files ───────────────────────
 echo ""
-echo -e "${BOLD}→ Copying commands to ${CYAN}.opencode/command/${NC}"
+echo -e "${BOLD}→ Copying commands to ${CYAN}.opencode/commands/${NC}"
 for cmd in phaseflow-explore phaseflow-plan phaseflow-build phaseflow-build-visual phaseflow-review phaseflow-orchestrate phaseflow-doctor phaseflow-stop; do
-  src="$SCRIPT_DIR/.opencode/command/$cmd.md"
-  dst="$OPENCODE_DIR/command/$cmd.md"
+  src="$SCRIPT_DIR/.opencode/commands/$cmd.md"
+  dst="$OPENCODE_DIR/commands/$cmd.md"
   if [ -f "$src" ]; then
     echo -e -n "  ${BOLD}$cmd${NC} ... "
     safe_copy "$src" "$dst"
@@ -116,6 +137,8 @@ for cmd in phaseflow-explore phaseflow-plan phaseflow-build phaseflow-build-visu
     echo -e "  ${YELLOW}⚠ $cmd.md not found, skipping${NC}"
   fi
 done
+
+remove_legacy_commands "$OPENCODE_DIR/command" "$OPENCODE_DIR/commands"
 
 # ── Copy templates ───────────────────────────
 echo ""
@@ -202,83 +225,15 @@ if [ ! -f "$OPENCODE_JSON" ]; then
     echo -e "  ${GREEN}✓${NC} Created opencode.json from template"
   fi
 else
-  echo -e "  ${GREEN}✓${NC} opencode.json already exists — merging agent definitions..."
-  # Use node to merge PhaseFlow agent definitions and plugin into existing config
+  echo -e "  ${GREEN}✓${NC} opencode.json already exists — merging PhaseFlow definitions..."
+  # Migrate the existing config to the native V2 shape and merge the PhaseFlow
+  # definitions into it, preserving every unrelated setting.
   if command -v node &>/dev/null; then
-    node -e "
-      const fs = require('fs');
-      const target = JSON.parse(fs.readFileSync('$OPENCODE_JSON', 'utf8'));
-      const template = JSON.parse(fs.readFileSync('$REPO_JSON', 'utf8'));
-
-      let changed = false;
-
-      // Merge instructions
-      if (!target.instructions || !target.instructions.includes('AGENTS.md')) {
-        if (!target.instructions) target.instructions = [];
-        if (!target.instructions.includes('AGENTS.md')) {
-          target.instructions.push('AGENTS.md');
-          changed = true;
-        }
-      }
-
-      // Merge root permission block — add inherit-task if missing
-      if (!target.permission) {
-        target.permission = {};
-      }
-      if (target.permission['inherit-task'] !== 'allow') {
-        target.permission['inherit-task'] = 'allow';
-        changed = true;
-      }
-
-      // Merge plugin registration
-      if (!target.plugin) target.plugin = [];
-      if (!target.plugin.includes('model-inheritance')) {
-        target.plugin.push('model-inheritance');
-        changed = true;
-      }
-
-      // Merge agent definitions
-      if (!target.agent) target.agent = {};
-      for (const [name, def] of Object.entries(template.agent || {})) {
-        if (!target.agent[name]) {
-          target.agent[name] = def;
-          changed = true;
-        }
-      }
-
-      // Patch orchestrator permissions: ensure task:allow + inherit-task:allow
-      // (even if the agent definition already exists from a previous install)
-      const orch = target.agent['phaseflow-orchestrator'];
-      if (orch && orch.permission) {
-        if (orch.permission.task !== 'allow') {
-          orch.permission.task = 'allow';
-          changed = true;
-        }
-        if (orch.permission['inherit-task'] !== 'allow') {
-          orch.permission['inherit-task'] = 'allow';
-          changed = true;
-        }
-      }
-
-      // Merge commands (status, refine)
-      if (!target.command) target.command = {};
-      for (const [name, def] of Object.entries(template.command || {})) {
-        if (!target.command[name]) {
-          target.command[name] = def;
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        fs.writeFileSync('$OPENCODE_JSON', JSON.stringify(target, null, 2) + '\n');
-        console.log('  ${GREEN}✓${NC} Config updated with PhaseFlow agent definitions');
-      } else {
-        console.log('  ${GREEN}✓${NC} PhaseFlow config already complete — no changes needed');
-      }
-    " 2>&1 || echo -e "  ${YELLOW}⚠ Failed to merge config. Check $OPENCODE_JSON manually.${NC}"
+    node "$SCRIPT_DIR/tools/merge-phaseflow-config.js" "$OPENCODE_JSON" "$REPO_JSON" || \
+      echo -e "  ${YELLOW}⚠ Could not merge config automatically. Check $OPENCODE_JSON manually.${NC}"
   else
     echo -e "  ${YELLOW}⚠ node not found. Cannot merge config automatically.${NC}"
-    echo -e "  ${YELLOW}  Verify opencode.json includes agents, plugin, and AGENTS.md.${NC}"
+    echo -e "  ${YELLOW}  Verify opencode.json includes agents, commands, and AGENTS.md.${NC}"
   fi
 fi
 
@@ -287,99 +242,40 @@ if [ "$INSTALL_PLUGIN" = true ]; then
   echo ""
   echo -e "${BOLD}→ Installing model-inheritance plugin${NC}"
 
-  if command -v npm &>/dev/null; then
-    # Install plugin dependency in the repo
-    cd "$SCRIPT_DIR"
-    npm install --silent 2>/dev/null
-    echo -e "  ${GREEN}✓${NC} Plugin dependencies installed in repo node_modules"
-
-    # Copy plugin source files to target
-    PLUGIN_SRC="$SCRIPT_DIR/.opencode/plugins/model-inheritance"
-    if [ "$INSTALL_GLOBAL" = true ]; then
-      PLUGIN_DST="$HOME/.config/opencode/plugins/model-inheritance"
-    else
-      PLUGIN_DST="$OPENCODE_DIR/plugins/model-inheritance"
-    fi
-    if [ -d "$PLUGIN_SRC" ]; then
-      if [ "$PLUGIN_SRC" = "$PLUGIN_DST" ]; then
-        echo -e "  ${YELLOW}⏭ plugin already in place (self-install)${NC}"
-      else
-        mkdir -p "$PLUGIN_DST"
-        cp -r "$PLUGIN_SRC/"* "$PLUGIN_DST/"
-        echo -e "  ${GREEN}✓${NC} Plugin files copied to ${CYAN}$PLUGIN_DST${NC}"
-      fi
-
-      # Add dependency to package.json (project install only, skip for global)
-      if [ "$INSTALL_GLOBAL" != true ]; then
-        TARGET_PKG="$PROJECT_DIR/package.json"
-        if [ -f "$TARGET_PKG" ]; then
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('$TARGET_PKG', 'utf8'));
-            if (!pkg.dependencies) pkg.dependencies = {};
-            if (!pkg.dependencies['model-inheritance']) {
-              pkg.dependencies['model-inheritance'] = 'file:.opencode/plugins/model-inheritance';
-              fs.writeFileSync('$TARGET_PKG', JSON.stringify(pkg, null, 2) + '\n');
-              console.log('  ${GREEN}✓${NC} Added model-inheritance dependency to package.json');
-            }
-          " 2>/dev/null || true
-        fi
-      fi
-    fi
-
-    # Install in global opencode cache
-    if [ -d "$HOME/.cache/opencode/packages" ]; then
-      cd "$HOME/.cache/opencode/packages"
-      npm install "$SCRIPT_DIR/.opencode/plugins/model-inheritance" 2>/dev/null || true
-      echo -e "  ${GREEN}✓${NC} Plugin installed in OpenCode global cache"
-    fi
-
-    # Ensure plugin is registered in global config
-    GLOBAL_CONFIG="$HOME/.config/opencode/opencode.json"
-    if [ -f "$GLOBAL_CONFIG" ]; then
-      node -e "
-        const fs = require('fs');
-        const c = JSON.parse(fs.readFileSync('$GLOBAL_CONFIG', 'utf8'));
-        if (!c.plugin) c.plugin = [];
-        if (!c.plugin.includes('model-inheritance')) {
-          c.plugin.push('model-inheritance');
-          fs.writeFileSync('$GLOBAL_CONFIG', JSON.stringify(c, null, 2) + '\n');
-          console.log('  ${GREEN}✓${NC} Added model-inheritance to global config');
-        }
-      " 2>/dev/null || true
-    else
-      echo -e "  ${YELLOW}⚠ No global config at $GLOBAL_CONFIG${NC}"
-    fi
-
-    # ── Ensure plugin in tui.json (respects existing config) ──
-    TUI_JSON="$HOME/.config/opencode/tui.json"
-    if [ -f "$TUI_JSON" ]; then
-      node -e "
-        const fs = require('fs');
-        const p = '$TUI_JSON';
-        let c = JSON.parse(fs.readFileSync(p, 'utf8'));
-        if (!c.plugin) c.plugin = [];
-        if (!c.plugin.includes('model-inheritance')) {
-          c.plugin.push('model-inheritance');
-          fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
-          console.log('  ${GREEN}✓${NC} Plugin added to tui.json');
-        }
-      " 2>/dev/null || true
-    else
-      mkdir -p "$(dirname "$TUI_JSON")"
-      printf '{\n  "plugin": ["model-inheritance"]\n}\n' > "$TUI_JSON"
-      echo -e "  ${GREEN}✓${NC} Created tui.json with plugin"
-    fi
+  PLUGIN_SRC="$SCRIPT_DIR/.opencode/plugins/model-inheritance"
+  if [ "$INSTALL_GLOBAL" = true ]; then
+    PLUGIN_DST="$HOME/.config/opencode/plugins/model-inheritance"
   else
-    echo -e "  ${YELLOW}⚠ npm not found. Install manually: cd $SCRIPT_DIR && npm install${NC}"
+    PLUGIN_DST="$OPENCODE_DIR/plugins/model-inheritance"
   fi
+
+  if [ ! -d "$PLUGIN_SRC" ]; then
+    echo -e "  ${YELLOW}⚠ Plugin source not found at ${CYAN}$PLUGIN_SRC${NC}"
+  elif [ "$PLUGIN_SRC" = "$PLUGIN_DST" ]; then
+    echo -e "  ${YELLOW}⏭ plugin already in place (self-install)${NC}"
+  else
+    mkdir -p "$PLUGIN_DST"
+    # Copy the plugin sources only — never node_modules or lockfiles.
+    for file in "$PLUGIN_SRC"/*.js "$PLUGIN_SRC"/*.json; do
+      [ -f "$file" ] || continue
+      cp "$file" "$PLUGIN_DST/"
+    done
+    echo -e "  ${GREEN}✓${NC} Plugin files copied to ${CYAN}$PLUGIN_DST${NC}"
+  fi
+
+  # OpenCode V2 auto-discovers local plugins under `.opencode/plugins/`
+  # (and `~/.config/opencode/plugins/`), so neither a config registration nor
+  # an npm dependency is required — adding one would make OpenCode try to
+  # install the package from the public registry.
+  echo -e "  ${GREEN}✓${NC} Plugin auto-discovered by OpenCode V2 (no registration needed)"
 fi
 
 # ── Global install ──
 if [ "$INSTALL_GLOBAL" = true ]; then
   GLOBAL_AGENTS_DIR="$HOME/.config/opencode/agents"
-  GLOBAL_COMMANDS_DIR="$HOME/.config/opencode/command"
+  GLOBAL_COMMANDS_DIR="$HOME/.config/opencode/commands"
   GLOBAL_CONFIG="$HOME/.config/opencode/opencode.json"
+  [ -f "$GLOBAL_CONFIG" ] || GLOBAL_CONFIG="$HOME/.config/opencode/opencode.jsonc"
 
   echo ""
   echo -e "${BOLD}→ Installing agents globally → ${CYAN}$GLOBAL_AGENTS_DIR${NC}"
@@ -398,74 +294,27 @@ for agent in phaseflow-explorer phaseflow-planner phaseflow-builder phaseflow-bu
   echo -e "${BOLD}→ Installing commands globally → ${CYAN}$GLOBAL_COMMANDS_DIR${NC}"
   mkdir -p "$GLOBAL_COMMANDS_DIR"
 for cmd in phaseflow-explore phaseflow-plan phaseflow-build phaseflow-build-visual phaseflow-review phaseflow-orchestrate phaseflow-doctor phaseflow-stop; do
-    src="$SCRIPT_DIR/.opencode/command/$cmd.md"
+    src="$SCRIPT_DIR/.opencode/commands/$cmd.md"
     if [ -f "$src" ]; then
       cp "$src" "$GLOBAL_COMMANDS_DIR/$cmd.md"
       echo -e "  ${GREEN}✓${NC} $cmd (global)"
     fi
   done
 
+  remove_legacy_commands "$HOME/.config/opencode/command" "$GLOBAL_COMMANDS_DIR"
+
   # Merge into global opencode.json
   echo ""
-  echo -e "${BOLD}→ Checking global opencode.json${NC}"
+  echo -e "${BOLD}→ Checking global ${CYAN}$GLOBAL_CONFIG${NC}"
   if [ ! -f "$GLOBAL_CONFIG" ]; then
     if [ -f "$REPO_JSON" ]; then
       cp "$REPO_JSON" "$GLOBAL_CONFIG"
       echo -e "  ${GREEN}✓${NC} Created global opencode.json"
     fi
   else
-    node -e "
-      const fs = require('fs');
-      const target = JSON.parse(fs.readFileSync('$GLOBAL_CONFIG', 'utf8'));
-      const template = JSON.parse(fs.readFileSync('$REPO_JSON', 'utf8'));
-      let changed = false;
-
-      // Merge root permission block — add inherit-task if missing
-      if (!target.permission) {
-        target.permission = {};
-      }
-      if (target.permission['inherit-task'] !== 'allow') {
-        target.permission['inherit-task'] = 'allow';
-        changed = true;
-      }
-
-      // Merge plugin registration
-      if (!target.plugin) target.plugin = [];
-      if (!target.plugin.includes('model-inheritance')) {
-        target.plugin.push('model-inheritance');
-        changed = true;
-      }
-
-      // Merge agent definitions
-      if (!target.agent) target.agent = {};
-      for (const [name, def] of Object.entries(template.agent || {})) {
-        if (!target.agent[name]) {
-          target.agent[name] = def;
-          changed = true;
-        }
-      }
-
-      // Patch orchestrator permissions: ensure task:allow + inherit-task:allow
-      // (even if the agent definition already exists from a previous install)
-      const orch = target.agent['phaseflow-orchestrator'];
-      if (orch && orch.permission) {
-        if (orch.permission.task !== 'allow') {
-          orch.permission.task = 'allow';
-          changed = true;
-        }
-        if (orch.permission['inherit-task'] !== 'allow') {
-          orch.permission['inherit-task'] = 'allow';
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        fs.writeFileSync('$GLOBAL_CONFIG', JSON.stringify(target, null, 2) + '\n');
-        console.log('  ${GREEN}✓${NC} Global config updated with PhaseFlow agents');
-      } else {
-        console.log('  ${GREEN}✓${NC} PhaseFlow agents already in global config');
-      }
-    " 2>/dev/null || echo -e "  ${YELLOW}⚠ Could not update global config. Check manually.${NC}"
+    # `--skip-instructions`: PhaseFlow's AGENTS.md must not leak into every project.
+    node "$SCRIPT_DIR/tools/merge-phaseflow-config.js" "$GLOBAL_CONFIG" "$REPO_JSON" --skip-instructions || \
+      echo -e "  ${YELLOW}⚠ Could not update global config. Check manually.${NC}"
   fi
 fi
 
@@ -474,7 +323,7 @@ echo ""
 echo -e "${BOLD}→ Verifying installed files${NC}"
 VERIFY_ERRORS=0
 
-# Check orchestrator has inherit-task AND task (fallback)
+# Check orchestrator may launch sub-agents and the inherit-task tool
 ORCH_FILE="$OPENCODE_DIR/agents/phaseflow-orchestrator.md"
 if [ -f "$ORCH_FILE" ]; then
   if grep -q "inherit-task" "$ORCH_FILE" 2>/dev/null; then
@@ -483,49 +332,31 @@ if [ -f "$ORCH_FILE" ]; then
     echo -e "  ${RED}✖${NC} Orchestrator: missing inherit-task permission!"
     VERIFY_ERRORS=$((VERIFY_ERRORS + 1))
   fi
-  if grep -q "task: allow" "$ORCH_FILE" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} Orchestrator: task allowed (fallback)"
+  if grep -qE "action: subagent" "$ORCH_FILE" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} Orchestrator: subagent allowed (fallback)"
   else
-    echo -e "  ${YELLOW}⚠${NC} Orchestrator: missing task: allow (recommended as fallback)"
+    echo -e "  ${YELLOW}⚠${NC} Orchestrator: missing subagent allow (recommended as fallback)"
   fi
 fi
 
-# Check builder has task: deny
+# Check builder cannot launch sub-agents
 BUILDER_FILE="$OPENCODE_DIR/agents/phaseflow-builder.md"
 if [ -f "$BUILDER_FILE" ]; then
-  if grep -q "task: deny" "$BUILDER_FILE" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} Builder: task denied"
+  # `grep -A` without `-q`: the quiet flag would suppress the piped output.
+  if grep -A2 "action: subagent" "$BUILDER_FILE" 2>/dev/null | grep -q "effect: deny"; then
+    echo -e "  ${GREEN}✓${NC} Builder: subagent denied"
   else
-    echo -e "  ${YELLOW}⚠${NC} Builder: missing task: deny (recommended)"
+    echo -e "  ${YELLOW}⚠${NC} Builder: missing subagent deny (recommended)"
   fi
 fi
 
-# Check command files have inherit-task + task
-for cmd_file in "$OPENCODE_DIR/command/"*.md; do
-  cmd_name="$(basename "$cmd_file")"
-  if [ "$cmd_name" != "phaseflow-orchestrate.md" ]; then
-    if grep -q "inherit-task:" "$cmd_file" 2>/dev/null; then
-      : # OK
-    else
-      echo -e "  ${YELLOW}⚠${NC} $cmd_name: missing inherit-task (manual commands use default model)"
-    fi
-  fi
-done
-
-# Check orchestrate command has inherit-task AND task
-ORCH_CMD="$OPENCODE_DIR/command/phaseflow-orchestrate.md"
-if [ -f "$ORCH_CMD" ]; then
-  if grep -q "inherit-task:" "$ORCH_CMD" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} phaseflow-orchestrate command: inherit-task available"
-  else
-    echo -e "  ${RED}✖${NC} phaseflow-orchestrate command: missing inherit-task!"
-    VERIFY_ERRORS=$((VERIFY_ERRORS + 1))
-  fi
-  if grep -q "task:" "$ORCH_CMD" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} phaseflow-orchestrate command: task available (fallback)"
-  else
-    echo -e "  ${YELLOW}⚠${NC} phaseflow-orchestrate command: missing task (recommended as fallback)"
-  fi
+# Check the commands live in the V2 directory
+if [ -d "$OPENCODE_DIR/commands" ]; then
+  COMMAND_COUNT=$(find "$OPENCODE_DIR/commands" -maxdepth 1 -name "*.md" | wc -l | tr -d ' ')
+  echo -e "  ${GREEN}✓${NC} ${COMMAND_COUNT} command(s) in .opencode/commands/"
+else
+  echo -e "  ${RED}✖${NC} Missing .opencode/commands/ directory!"
+  VERIFY_ERRORS=$((VERIFY_ERRORS + 1))
 fi
 
 if [ "$VERIFY_ERRORS" -gt 0 ]; then
@@ -540,7 +371,7 @@ echo -e "${GREEN}${BOLD}╚═════════════════�
 echo ""
 echo -e "  ${BOLD}Files installed:${NC}"
     echo -e "    ${CYAN}•${NC} 9 agents        → ${CYAN}.opencode/agents/${NC}"
-    echo -e "    ${CYAN}•${NC} 8 commands      → ${CYAN}.opencode/command/${NC}"
+    echo -e "    ${CYAN}•${NC} 8 commands      → ${CYAN}.opencode/commands/${NC}"
     echo -e "    ${CYAN}•${NC} 6 phase + 5 tracker templates → ${CYAN}templates/${NC}"
     echo -e "    ${CYAN}•${NC} Tracker validator + entry template → ${CYAN}tools/check-tracker.sh${NC}, ${CYAN}tracker-template/TEMPLATE.md${NC}"
 if [ "$INSTALL_PLUGIN" = true ]; then
@@ -559,7 +390,7 @@ echo -e "    ${CYAN}/phaseflow-doctor${NC}        Diagnose project health (read-
 echo -e "    ${CYAN}/phaseflow-close-hito${NC}    Close a HITO — MILESTONES + CURRENT_PLAN update"
 echo -e "    ${CYAN}/phaseflow-stop${NC}          Pause the current phase safely"
 echo ""
-echo -e "  ${YELLOW}💡 Tip:${NC} Restart OpenCode for changes to take effect."
+echo -e "  ${YELLOW}💡 Tip:${NC} OpenCode V2 reloads config, agents, commands and plugins automatically."
 echo -e "  ${YELLOW}💡 Tip:${NC} Use ${CYAN}--global${NC} to install system-wide from any project."
 echo -e "  ${YELLOW}💡 Tip:${NC} Use ${CYAN}--plugin${NC} to install the model-inheritance plugin."
 echo -e "  ${YELLOW}💡 Tip:${NC} Use ${CYAN}/phaseflow-orchestrate --gsd${NC} to sync results to GSD .planning/ files."

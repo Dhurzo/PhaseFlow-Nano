@@ -5,14 +5,25 @@ description: >-
   files.** Default mode is read-only diagnostic. --fix mode requires
   write permissions and modifies plan.md only.
 mode: subagent
-permission:
-  read: allow
-  glob: allow
-  grep: allow
-  write: allow
-  edit: allow
-  bash: allow
-  task: deny
+permissions:
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # PhaseFlow Doctor 🩺

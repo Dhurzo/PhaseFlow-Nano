@@ -1,14 +1,10 @@
 ---
-description: Plan a project by splitting it into independent, self-contained phases
-argument-hint: "[project or feature description]"
-tools:
-  task: true
-  inherit-task: true
+description: Plan a project by splitting it into independent, self-contained phases — project or feature description
 ---
 
 Analyze the user's request and divide the work into independent, self-contained phases.
 
-Call the `phaseflow-planner` sub-agent via `inherit-task` (preferred) or `task` (fallback) with `subagent_type="phaseflow-planner"`. Do NOT plan directly — delegate to the sub-agent.
+Call the `phaseflow-planner` sub-agent via `inherit-task` (preferred) or `subagent` (fallback) with `agent="phaseflow-planner"`. Do NOT plan directly — delegate to the sub-agent.
 
 The sub-agent will:
 1. Analyze the requirements

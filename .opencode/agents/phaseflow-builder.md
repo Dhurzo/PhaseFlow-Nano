@@ -6,14 +6,25 @@ description: >-
   "continue", "follow the phases", or "start the project". Also
   when the user asks to execute or continue a planned project.
 mode: subagent
-permission:
-  edit: allow
-  bash: allow
-  read: allow
-  glob: allow
-  grep: allow
-  write: allow
-  task: deny
+permissions:
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: shell
+    resource: "*"
+    effect: allow
+  - action: read
+    resource: "*"
+    effect: allow
+  - action: glob
+    resource: "*"
+    effect: allow
+  - action: grep
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # PhaseFlow Builder
@@ -50,7 +61,7 @@ Tool calls 4+:  Continue execution (write source files, CHECKPOINT.md, etc.)
 
 ### 🔴 TOOL NAME RULE — Correct tool names
 
-The tool names are: `read`, `write`, `edit`, `bash`, `glob`, `grep`. There is no `Read:` tool. There is no `Write:` tool. If you call `Read:` or `Write:` (capital R, with colon), the call fails because those tools don't exist. Always use lowercase tool names.
+The tool names are: `read`, `write`, `edit`, `shell`, `glob`, `grep`. There is no `Read:` tool. There is no `Write:` tool. If you call `Read:` or `Write:` (capital R, with colon), the call fails because those tools don't exist. Always use lowercase tool names. The shell tool is `shell` in OpenCode V2 (not `bash`).
 
 ---
 
